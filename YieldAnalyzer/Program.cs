@@ -5,6 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
+using Microsoft.SqlServer.Types;
+
+using Calculations;
 
 
 namespace YieldAnalyzer
@@ -13,67 +16,55 @@ namespace YieldAnalyzer
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("你好 Welcome");
-            Console.ReadLine();
-
-            int r = 2477;
-
+            Console.WriteLine(DateTime.Now + " 你好 Welcome");
+           
             DataTable mytable = new DataTable();
+            Console.WriteLine(DateTime.Now + " Start to load table");
+            mytable = SQLServer.readDT("select top 100 * from weiboDEV.dbo.GEOminimal");
+            
 
-            mytable = SQLServer.READdt();
+            //disp table on console
+            if (Properties.Settings.Default.disp == true)
+            {
+                foreach (DataColumn column in mytable.Columns)
+                {
+                    Console.Write("{0,12}", column.ColumnName);
+                    Console.Write(",");
+
+                }
+
+                foreach (DataRow row in mytable.Rows)
+                {
+                    Console.WriteLine();
+                    for (int x = 0; x < mytable.Columns.Count; x++)
+                    {
+                        Console.Write("{0,12}", row[x].ToString() + " ");
+                    }
+                }
+                
+            }
+            Console.WriteLine(DateTime.Now + " Finished loading table");
+
+
+
+            
+            Console.ReadLine();
 
         }
     }
 
+
+    
+
+
     class SQLServer {
-        static public DataTable READdt()
+        static public DataTable readDT(string query)
         {
-
-            string query = "SELECT TOP(" + ") " +
-                                     "[idNearByTimeLine]" +
-                                    ",[SeasonID]" +
-                                    ",[FieldID]" +
-                                    ",[FieldGroupID]" +
-                                    ",[createdAT]" +
-                                    ",[msgID]" +
-                                    ",[msgmid]" +
-                                    ",[msgidstr]" +
-                                    ",[msgtext]" +
-                                    ",[msgin_reply_to_status_id]" +
-                                    ",[msgin_reply_to_user_id]" +
-                                    ",[msgin_reply_to_screen_name]" +
-                                    ",[msgfavorited]" +
-                                    ",[msgsource]" +
-                                    ",[geoTYPE]" +
-                                    ",[geoLAT]" +
-                                    ",[geoLOG]" +
-                                    ",[distance]" +
-                                    ",[userID]" +
-                                    ",[userscreen_name]" +
-                                    ",[userprovince]" +
-                                    ",[usercity]" +
-                                    ",[userlocation]" +
-                                    ",[userdescription]" +
-                                    ",[userfollowers_count]" +
-                                    ",[userfriends_count]" +
-                                    ",[userstatuses_count]" +
-                                    ",[userfavourites_count]" +
-                                    ",[usercreated_at]" +
-                                    ",[usergeo_enabled]" +
-                                    ",[userverified]" +
-                                    ",[userbi_followers_count]" +
-                                    ",[userlang]" +
-                                    ",[userclient_mblogid]" +
-                                    ",[nearbytimelinecol]" +
-                                    ",[RowADDEDtime]" +
-                                    ",[WGSLatitudeX]" +
-                                    ",[WGSLongitudeY]" +
-                                    ",[location]" +
-                                    " FROM [weibotest2].[dbo].[NBT2] Where [idNearByTimeLine] > " + id.ToString() + " order by [idNearByTimeLine] ASC;";
-
-
             //CONNECT
-            SqlConnection myConnection = new SqlConnection(Properties.Settings.Default.MSSQL);
+            
+            SqlConnection myConnection = new SqlConnection(Properties.Settings.Default.SQL_Michael);
+            //myConnection.ChangeDatabase("weiboDEV");
+
             try
             {
                 myConnection.Open();
