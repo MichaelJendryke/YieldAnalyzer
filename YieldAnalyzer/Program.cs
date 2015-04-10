@@ -7,7 +7,8 @@ using System.Data;
 using System.Data.SqlClient;
 using Microsoft.SqlServer.Types;
 
-using Calculations;
+//using Calculations;
+using ProSQLSpatial;
 
 
 namespace YieldAnalyzer
@@ -20,10 +21,29 @@ namespace YieldAnalyzer
            
             DataTable mytable = new DataTable();
             Console.WriteLine(DateTime.Now + " Start to load table");
-            mytable = SQLServer.readDT("select top 100 * from weiboDEV.dbo.GEOminimal");
-            
+            string query = "select top 10 * from weiboDEV.dbo.GEOminimal";
+            Console.WriteLine(query);
+            mytable = SQLServer.readDT(query);
 
-            //disp table on console
+
+            disp.dispDT(mytable);
+
+            
+            mytable.Columns.Add("geography", typeof(SqlGeography));
+
+            disp.dispDT(mytable);
+
+                        
+            Console.ReadLine();
+
+        }
+    }
+
+
+
+    class disp { 
+    static public void dispDT(DataTable mytable){
+    //disp table on console
             if (Properties.Settings.Default.disp == true)
             {
                 foreach (DataColumn column in mytable.Columns)
@@ -43,19 +63,9 @@ namespace YieldAnalyzer
                 }
                 
             }
-            Console.WriteLine(DateTime.Now + " Finished loading table");
-
-
-
-            
-            Console.ReadLine();
-
-        }
     }
 
-
-    
-
+    }
 
     class SQLServer {
         static public DataTable readDT(string query)

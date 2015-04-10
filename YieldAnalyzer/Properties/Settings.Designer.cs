@@ -34,6 +34,18 @@ namespace YieldAnalyzer.Properties {
             }
         }
         
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool disp {
+            get {
+                return ((bool)(this["disp"]));
+            }
+            set {
+                this["disp"] = value;
+            }
+        }
+        
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.ConnectionString)]
@@ -42,18 +54,6 @@ namespace YieldAnalyzer.Properties {
         public string SQL_Michael {
             get {
                 return ((string)(this["SQL_Michael"]));
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool disp {
-            get {
-                return ((bool)(this["disp"]));
-            }
-            set {
-                this["disp"] = value;
             }
         }
     }

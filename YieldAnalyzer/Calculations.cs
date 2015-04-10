@@ -149,11 +149,11 @@ namespace Calculations
                 double radius;
                 SimplePoint circumcentre;
                 CalculateCircumcircle(a, b, c, out circumcentre, out radius);
-                SimpleTriangle SuperTriangle = new SimpleTriangle(numPoints, numPoints + 1, numPoints + 2, circumcentre, radius);
+                /////SimpleTriangle SuperTriangle = new SimpleTriangle(numPoints, numPoints + 1, numPoints + 2, circumcentre, radius);
 
                 //Add the supertriangle
                 List<SimpleTriangle> Triangles = new List<SimpleTriangle>();
-                Triangles.Add(SimpleTriangle);
+                //////Triangles.Add(SimpleTriangle);
 
                 //Create an empty list to hold completed triangles
                 List<SimpleTriangle> CompletedTriangle = new List<SimpleTriangle>();
