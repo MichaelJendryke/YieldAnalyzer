@@ -30,6 +30,8 @@ namespace YieldAnalyzer
 
             
             mytable.Columns.Add("geography", typeof(SqlGeography));
+            mytable.Columns.Add("geometry", typeof(SqlGeometry));
+
 
             disp.dispDT(mytable);
 
