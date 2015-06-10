@@ -50,7 +50,7 @@ namespace YieldAnalyzer.Properties {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.ConnectionString)]
         [global::System.Configuration.DefaultSettingValueAttribute("user id=username;password=password;server=Michael-PC;Trusted_Connection=yes;datab" +
-            "ase=weiboDEV; connection timeout=6000")]
+            "ase=weiboDEV; connection timeout=3600;Type System Version=latest;")]
         public string SQL_Michael {
             get {
                 return ((string)(this["SQL_Michael"]));

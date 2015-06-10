@@ -2,13 +2,18 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Transactions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
 using Microsoft.SqlServer.Types;
 using System.Text.RegularExpressions;
+
+
+
 //using Calculations;
-using ProSQLSpatial;
+//using ProSQLSpatial;
 
 namespace YieldAnalyzer
 {
@@ -24,146 +29,123 @@ namespace YieldAnalyzer
                 case 1: //Intersecting points with Polygon
                     Console.WriteLine("process 1: Update Points with ID from intersecting Polygon");
                     Console.WriteLine(DateTime.Now + " Start to load PolyTable with:");
-                    string query = "SELECT ID_3, Shape from weiboDEV.dbo.GADM_CHN_ADM3_SINGLE";
-                    Console.WriteLine(query);
+                    string query = "SELECT OBJECTID, Shape from weiboDEV.dbo.GADM_CHN_ADM3_SINGLE";
+                    //Console.WriteLine(query);
                     DataTable PolyTable = new DataTable();
                     PolyTable = SQLServer.readDT(query);
                     //disp.dispDT(PolyTable);
                     Console.WriteLine("PolyTable has " + PolyTable.Rows.Count + " records");
-                    
-                    for (Int32 i = 0; i < PolyTable.Rows.Count; i++)
+
+
+                    int count = 0;
+                    for (Int32 i = 406; i < PolyTable.Rows.Count; i++)
                     {
                         string poly = PolyTable.Rows[i]["Shape"].ToString();
-                       
-                        string[] coordinates = poly.Split(' ');
-                        string latORlon = "lon";
-                        double minX = 9999.99;
-                        double minY = 9999.99;
-                        double maxX = -9999.99;
-                        double maxY = -9999.99;
-                        int index = 0;
-                        string Snumber;
-                        double number=0.0;
-                        foreach (string coordinate in coordinates)
-                        {
-                            if (index < 0)             //                                |
-                            {                           //                                |
-                                continue;   // Skip the remainder of this iteration. -----+
-                            }
-                            Snumber = Regex.Replace(coordinate, @"[ABCDEFGHIJKLMNOPQRSTUVWXYZ(),\n\r ]", String.Empty);
-                            if (string.IsNullOrEmpty(Snumber) == true) {
-                                // first part of text
-                                //Console.WriteLine("damn!"); 
-                                continue;
-                            }
-                            else
-                            {
-                                number = Convert.ToDouble(Snumber);
+                        //Console.WriteLine(PolyTable.Rows[i]["OBJECTID"].GetType());
+                        Int32 polyID = (Int32)PolyTable.Rows[i]["OBJECTID"];
 
-                            }
 
-                            //Console.WriteLine(number.ToString());
-                            if (latORlon=="lon"){
-                                //get max
-                                if (number > maxX)
-                                {
-                                    maxX = number;
-                                }
-                                //get min
-                                if (number < minX)
-                                {
-                                    minX = number;
-                                }
+                        Console.Write("At polyID: "+ polyID.ToString() + "\t");
 
-                                latORlon = "lat";
-                            }else{
-                                //get max
-                                if (number > maxY)
-                                {
-                                    maxY = number;
-                                }
-                                //get min
-                                if (number < minY)
-                                {
-                                    minY = number;
-                                }
-                                latORlon="lon";
-                            }
+
+                        double buffer = 0.0001;
+                        var dims = Calculations.GetMaxMinXYFromPolygonstring(poly, buffer);
+                        //Console.Write(PolyTable.Rows[i]["OBJECTID"].ToString() + " ");
+                        //Console.WriteLine(dims);
+
+
+                        query = "Select [msgID],[location] from [weiboDEV].[dbo].[GEOminimal] WHERE [WGSLongitudeY] > " + dims.Item1.ToString() + " AND [WGSLongitudeY] < " + dims.Item2.ToString() + " AND [WGSLatitudeX] > " + dims.Item3.ToString() + " AND [WGSLatitudeX] < " + dims.Item4.ToString() + "";
+                        //Console.WriteLine(query);
+                        
+                        
+                        DataTable PointTableEnv = new DataTable();
+                        PointTableEnv = SQLServer.readDT(query);
+                        //Console.WriteLine("PointTableEnv has " + PointTableEnv.Rows.Count + " records");
+                        if (PointTableEnv.Rows.Count==0) {
+                            Console.WriteLine("");
+                            continue;
                         }
 
-                        Console.WriteLine("ID_3: " + PolyTable.Rows[i]["ID_3"].ToString() + " minX: " + minX.ToString() + " maxX: " + maxX.ToString() + " minY: " + minY.ToString() + " smaxY: " + maxY.ToString());
+                        Console.Write("\t" + PointTableEnv.Rows.Count + "\tMessages in Envelope ");
+
+
+
+                        DataTable ResultTable = new DataTable();
+                        ResultTable.Columns.Add("msgID", typeof(Int64));
+                        ResultTable.Columns.Add("AMD3_ID", typeof(Int32));
+
+
+
+
+
+
+                        SqlGeography polygon = new SqlGeography();
+                        polygon = PolyTable.Rows[i].Field<SqlGeography>("Shape");
 
                         
+
+                        //Console.WriteLine(polygon);
+                        SqlGeography point = new SqlGeography();
+                        int IDXpoint = 1;
+                        Console.WriteLine("");
+
+                        //Parallel.ForEach(PointTableEnv.AsEnumerable(), new ParallelOptions { MaxDegreeOfParallelism = 3 }, dtRow =>
+                        foreach(DataRow dtRow in PointTableEnv.Rows)
+                        {
+                            point = dtRow.Field<SqlGeography>("location");
+                            Boolean inside = (Boolean)polygon.STIntersects(point);
+
+
+                            //Console.WriteLine(dtRow.Field<Int64>("msgID"));
+                            Console.Write("\r{0} Points checked  ", IDXpoint.ToString());
+
+
+                            if (inside == true)
+                            {
+                                //Console.WriteLine("IDX: " + IDXpoint.ToString() + " " + point + " match? " + inside.ToString());
+                                count = count + 1;
+                                //query = "Update [weiboDEV].[dbo].[GEOminimal] Set [AMD3sing_OID]=" + PolyTable.Rows[i]["OBJECTID"].ToString() + " Where [idNearByTimeLine]=" + dtRow.Field<int>("idNearByTimeLine");
+                                //SQLServer.updateTable(query);
+
+
+                                DataRow row = ResultTable.NewRow();
+                                row["msgID"] = dtRow.Field<Int64>("msgID");
+                                row["AMD3_ID"] = polyID;
+                                ResultTable.Rows.Add(row);
+
+
+                            }
+                            //else {
+                            //    dtRow.Delete();
+
+                            //}
+
+                            IDXpoint++;
+
+
+
+
+                        }//);
+                        
+                        
+                        //disp.dispDT(ResultTable);
+
+
+
+                       
+                        Console.Write(count.ToString() + " Points inside\t");
+
+
+                        string destinationtable = "[dbo].[msgID_AMD3_ID]";
+                        //SQLServer.writeDT(ResultTable, destinationtable);
+                        SQLServer.WRITEDataTableToSQLServer(destinationtable, ResultTable, "weiboDEV");
+                        Console.WriteLine(" now in " + destinationtable);
+                        
+                        count = 0;
+                        //Console.ReadLine();
+
                     }
-Console.ReadLine();
-
-                    
-                    for (Int32 i = 0; i < PolyTable.Rows.Count; i++)
-                    {
-                        string ShapeID = PolyTable.Rows[i]["ID_3"].ToString();
-                        query = "Select geography::STPolyFromText(geometry::UnionAggregate ( geometry::STGeomFromText(cast([Shape] as varchar(max)), 4326)  ).STEnvelope().STAsText(),4326).STPointN(1).Lat AS minY, geography::STPolyFromText(geometry::UnionAggregate ( geometry::STGeomFromText(cast([Shape] as varchar(max)), 4326)  ).STEnvelope().STAsText(),4326).STPointN(1).Long AS minX,geography::STPolyFromText(geometry::UnionAggregate ( geometry::STGeomFromText(cast([Shape] as varchar(max)), 4326)  ).STEnvelope().STAsText(),4326).STPointN(3).Lat AS maxY,geography::STPolyFromText(geometry::UnionAggregate ( geometry::STGeomFromText(cast([Shape] as varchar(max)), 4326)  ).STEnvelope().STAsText(),4326).STPointN(3).Long AS maxX FROM [weiboDEV].[dbo].[GADM_CHN_ADM2] WHERE OBJECTID = " + ShapeID + ";";
-                        DataTable dimensionsRectangle = new DataTable();
-                        dimensionsRectangle = SQLServer.readDT(query);
-
-                        Console.WriteLine("IDX: " + (i).ToString() + "  " +
-                            " minY: " + dimensionsRectangle.Rows[0]["minY"].ToString() + " " +
-                            " minX: " + dimensionsRectangle.Rows[0]["minX"].ToString() + " " +
-                            " maxY: " + dimensionsRectangle.Rows[0]["maxY"].ToString() + " " +
-                            " maxX: " + dimensionsRectangle.Rows[0]["maxX"].ToString()
-                                            );
-                    }
-
-                    Console.ReadLine();
-
-                    Console.WriteLine(DateTime.Now + " Start to load Points with:");
-                    string query2 = "select top 10000 [idNearByTimeLine],[location] from weiboDEV.dbo.GEOminimal;";
-                    Console.WriteLine(query2);
-                    DataTable PointTable = new DataTable();
-                    PointTable = SQLServer.readDT(query2);
-                    //disp.dispDT(PolyTable);
-                    Console.WriteLine("PolyTable has " + PointTable.Rows.Count + " records");
-
-                    var h = Microsoft.SqlServer.Types.SqlGeography.Point(47.653d, -122.358d, 4326);
-                    Console.WriteLine(PointTable.Rows[1]["location"].GetType());
-
-                    Console.WriteLine(PointTable.Rows[1]["location"].ToString());
-
-
-
-
-
-
-
-
-                    for (Int32 i = 0; i < PointTable.Rows.Count; i++)
-                    {
-                        Console.WriteLine(PolyTable.Rows[i]["location"].ToString());
-
-                    }
-
-
-
-
-                    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                                        
 
                     Console.ReadLine();
                     break;
@@ -182,7 +164,7 @@ Console.ReadLine();
                     int updated = 0;
                     for (Int32 i = 0; i < HEXIDTable.Rows.Count; i++)
                     {
-                        
+
                         string hexagon = HEXIDTable.Rows[i]["RandomID"].ToString();
 
                         string s = "Update top (" + records.ToString() + ") [weiboDEV].[dbo].GEOminimal SET [HEX_ID] = " + hexagon + " Where location.STIntersects((Select [Shape] FROM [weiboDEV].[dbo].[HEXAGONFIELDS_CHINA] WHERE RandomID = " + hexagon + ")) = 1 AND [HEX_ID] IS NULL;";
@@ -198,7 +180,7 @@ Console.ReadLine();
                             Console.Write(" moving on to next hexagon");
                         }
 
-                        
+
                     }
 
                     //
@@ -290,12 +272,26 @@ Console.ReadLine();
 
     class SQLServer
     {
-        static public DataTable readDT(string query)
+        static public SqlConnection GetSQLServerConnection(string db)
         {
-            //CONNECT
+
 
             SqlConnection myConnection = new SqlConnection(Properties.Settings.Default.SQL_Michael);
-            //myConnection.ChangeDatabase("weiboDEV");
+
+            //CONNECT
+            if (db == "weiboDEV")
+            {
+                myConnection = new SqlConnection(Properties.Settings.Default.SQL_Michael);
+
+            }
+            if (db == "Weibo")
+            {
+                
+                //myConnection = new SqlConnection(Properties.Settings.Default.MSSQLtimo);
+
+            }
+            //Console.WriteLine(myConnection.ToString());   
+
 
             try
             {
@@ -305,11 +301,34 @@ Console.ReadLine();
             {
                 Console.WriteLine(e.ToString());
             }
+            return myConnection;
+        }
+        
+        static public DataTable readDT(string query)
+        {
+            //CONNECT
 
+            SqlConnection myConnection = new SqlConnection(Properties.Settings.Default.SQL_Michael);
+            //myConnection.ChangeDatabase("weiboDEV");
+
+            //Console.WriteLine(myConnection.ConnectionTimeout.ToString());
+            try
+            {
+                myConnection.Open();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+
+            SqlCommand command = new SqlCommand(query, myConnection);
+            command.CommandTimeout = 3600; //5 mins
 
             var table = new DataTable();
-            using (var da = new SqlDataAdapter(query, myConnection))
+            //using (var da = new SqlDataAdapter(query, myConnection))
+            using (var da = new SqlDataAdapter(command))
             {
+                
                 da.Fill(table);
             }
 
@@ -320,11 +339,74 @@ Console.ReadLine();
 
         }
 
-        static public void writeDT(DataTable dataTable)
+        static public void writeDT(DataTable dt,string tablename)
         {
-            SqlBulkCopy sqlBulkCopy = new SqlBulkCopy(Properties.Settings.Default.SQL_Michael);
-            sqlBulkCopy.DestinationTableName = "MySpatialDataTable";
-            sqlBulkCopy.WriteToServer(dataTable);
+            //SqlBulkCopy sqlBulkCopy = new SqlBulkCopy(Properties.Settings.Default.SQL_Michael);
+            //sqlBulkCopy.DestinationTableName = "MySpatialDataTable";
+            //sqlBulkCopy.WriteToServer(dataTable);
+
+            string connectionString = Properties.Settings.Default.SQL_Michael;
+        // Open a connection to the AdventureWorks database. 
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+
+           
+
+                // Create the SqlBulkCopy object.  
+                // Note that the column positions in the source DataTable  
+                // match the column positions in the destination table so  
+                // there is no need to map columns.  
+                using (SqlBulkCopy bulkCopy = new SqlBulkCopy(connection))
+                {
+                    bulkCopy.DestinationTableName = tablename;
+
+                    try
+                    {
+                        // Write from the source to the destination.
+                        bulkCopy.WriteToServer(dt);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
+                }
+
+                connection.Close();
+
+            }   
+            
+        }
+
+        static public bool WRITEDataTableToSQLServer(string tableName, DataTable dataTable, string database)
+        {
+
+            bool isSuccuss;
+            using (TransactionScope scope = new TransactionScope())
+            {
+
+                try
+                {
+                    SqlConnection SqlConnectionObj = SQLServer.GetSQLServerConnection(database);
+
+                    SqlBulkCopy bulkCopy = new SqlBulkCopy(SqlConnectionObj, SqlBulkCopyOptions.TableLock | SqlBulkCopyOptions.FireTriggers | SqlBulkCopyOptions.UseInternalTransaction, null );
+                    bulkCopy.BulkCopyTimeout = 3600;
+                    bulkCopy.DestinationTableName = tableName;
+                    bulkCopy.WriteToServer(dataTable);
+                    isSuccuss = true;
+                }
+                catch (Exception ex)
+                {
+                    isSuccuss = false;
+                    Console.WriteLine(ex.ToString());
+                }
+            scope.Complete();
+            }
+
+            
+            return isSuccuss;
+
         }
 
         static public int updateTable(string statement)
@@ -397,6 +479,75 @@ Console.ReadLine();
 
 
 
+        }
+
+        static public Tuple<double, double, double, double> GetMaxMinXYFromPolygonstring(string poly, double buf)
+        {
+
+
+            string[] coordinates = poly.Split(' ');
+            string latORlon = "lon";
+            double minX = 9999.99;
+            double minY = 9999.99;
+            double maxX = -9999.99;
+            double maxY = -9999.99;
+            int index = 0;
+            string Snumber;
+            double number = 0.0;
+            foreach (string coordinate in coordinates)
+            {
+                if (index < 0)             //                                |
+                {                           //                                |
+                    continue;   // Skip the remainder of this iteration. -----+
+                }
+                Snumber = Regex.Replace(coordinate, @"[ABCDEFGHIJKLMNOPQRSTUVWXYZ(),\n\r ]", String.Empty);
+                if (string.IsNullOrEmpty(Snumber) == true)
+                {
+                    // first part of text
+                    //Console.WriteLine("damn!"); 
+                    continue;
+                }
+                else
+                {
+                    number = Convert.ToDouble(Snumber);
+
+                }
+
+                //Console.WriteLine(number.ToString());
+                if (latORlon == "lon")
+                {
+                    //get max
+                    if (number > maxX)
+                    {
+                        maxX = number;
+                    }
+                    //get min
+                    if (number < minX)
+                    {
+                        minX = number;
+                    }
+
+                    latORlon = "lat";
+                }
+                else
+                {
+                    //get max
+                    if (number > maxY)
+                    {
+                        maxY = number;
+                    }
+                    //get min
+                    if (number < minY)
+                    {
+                        minY = number;
+                    }
+                    latORlon = "lon";
+                }
+            }
+
+            // Console.WriteLine(" minX: " + minX.ToString() + " maxX: " + maxX.ToString() + " minY: " + minY.ToString() + " smaxY: " + maxY.ToString());
+
+            return Tuple.Create(minX - buf, maxX + buf, minY - buf, maxY + buf);
         }
     }
 }

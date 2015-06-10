@@ -15,9 +15,9 @@
     <Setting Name="SQL_Michael" Type="(Connection string)" Scope="Application">
       <DesignTimeValue Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
 &lt;SerializableConnectionString xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
-  &lt;ConnectionString&gt;user id=username;password=password;server=Michael-PC;Trusted_Connection=yes;database=weiboDEV; connection timeout=6000&lt;/ConnectionString&gt;
+  &lt;ConnectionString&gt;user id=username;password=password;server=Michael-PC;Trusted_Connection=yes;database=weiboDEV; connection timeout=3600;Type System Version=latest;&lt;/ConnectionString&gt;
 &lt;/SerializableConnectionString&gt;</DesignTimeValue>
-      <Value Profile="(Default)">user id=username;password=password;server=Michael-PC;Trusted_Connection=yes;database=weiboDEV; connection timeout=6000</Value>
+      <Value Profile="(Default)">user id=username;password=password;server=Michael-PC;Trusted_Connection=yes;database=weiboDEV; connection timeout=3600;Type System Version=latest;</Value>
     </Setting>
   </Settings>
 </SettingsFile>
