@@ -22,16 +22,22 @@ namespace YieldAnalyzer
         static void Main(string[] args)
         {
             Console.WriteLine(DateTime.Now + " 你好 Welcome");
-            int process = 1;
+            int process = 4;
 
+            string query = "";
+            DataTable PolyTable = new DataTable();
+            DataTable PointTable = new DataTable();
+            DataTable PointTableEnv = new DataTable();
             switch (process)
             {
+
+
+
                 case 1: //Intersecting points with Polygon
                     Console.WriteLine("process 1: Update Points with ID from intersecting Polygon");
                     Console.WriteLine(DateTime.Now + " Start to load PolyTable with:");
-                    string query = "SELECT OBJECTID, Shape from weiboDEV.dbo.GADM_CHN_ADM3_SINGLE";
+                    query = "SELECT OBJECTID, Shape from weiboDEV.dbo.GADM_CHN_ADM3_SINGLE";
                     //Console.WriteLine(query);
-                    DataTable PolyTable = new DataTable();
                     PolyTable = SQLServer.readDT(query);
                     //disp.dispDT(PolyTable);
                     Console.WriteLine("PolyTable has " + PolyTable.Rows.Count + " records");
@@ -45,7 +51,7 @@ namespace YieldAnalyzer
                         Int32 polyID = (Int32)PolyTable.Rows[i]["OBJECTID"];
 
 
-                        Console.Write("At polyID: "+ polyID.ToString() + "\t");
+                        Console.Write("At polyID: " + polyID.ToString() + "\t");
 
 
                         double buffer = 0.0001;
@@ -56,23 +62,24 @@ namespace YieldAnalyzer
 
                         query = "Select [msgID],[location] from [weiboDEV].[dbo].[GEOminimal] WHERE [WGSLongitudeY] > " + dims.Item1.ToString() + " AND [WGSLongitudeY] < " + dims.Item2.ToString() + " AND [WGSLatitudeX] > " + dims.Item3.ToString() + " AND [WGSLatitudeX] < " + dims.Item4.ToString() + "";
                         //Console.WriteLine(query);
-                        
-                        
-                        DataTable PointTableEnv = new DataTable();
+
+
+
                         PointTableEnv = SQLServer.readDT(query);
                         //Console.WriteLine("PointTableEnv has " + PointTableEnv.Rows.Count + " records");
-                        if (PointTableEnv.Rows.Count==0) {
+                        if (PointTableEnv.Rows.Count == 0)
+                        {
                             Console.WriteLine("");
                             continue;
                         }
 
                         Console.Write("\t" + PointTableEnv.Rows.Count + "\tMessages in Envelope ");
+                        PointTableEnv.Columns.Add("AMD3_ID", typeof(Int32));
 
 
-
-                        DataTable ResultTable = new DataTable();
-                        ResultTable.Columns.Add("msgID", typeof(Int64));
-                        ResultTable.Columns.Add("AMD3_ID", typeof(Int32));
+                        //DataTable ResultTable = new DataTable();
+                        //ResultTable.Columns.Add("msgID", typeof(Int64));
+                        //ResultTable.Columns.Add("AMD3_ID", typeof(Int32));
 
 
 
@@ -82,7 +89,7 @@ namespace YieldAnalyzer
                         SqlGeography polygon = new SqlGeography();
                         polygon = PolyTable.Rows[i].Field<SqlGeography>("Shape");
 
-                        
+
 
                         //Console.WriteLine(polygon);
                         SqlGeography point = new SqlGeography();
@@ -90,7 +97,7 @@ namespace YieldAnalyzer
                         Console.WriteLine("");
 
                         //Parallel.ForEach(PointTableEnv.AsEnumerable(), new ParallelOptions { MaxDegreeOfParallelism = 3 }, dtRow =>
-                        foreach(DataRow dtRow in PointTableEnv.Rows)
+                        foreach (DataRow dtRow in PointTableEnv.Rows)
                         {
                             point = dtRow.Field<SqlGeography>("location");
                             Boolean inside = (Boolean)polygon.STIntersects(point);
@@ -106,19 +113,16 @@ namespace YieldAnalyzer
                                 count = count + 1;
                                 //query = "Update [weiboDEV].[dbo].[GEOminimal] Set [AMD3sing_OID]=" + PolyTable.Rows[i]["OBJECTID"].ToString() + " Where [idNearByTimeLine]=" + dtRow.Field<int>("idNearByTimeLine");
                                 //SQLServer.updateTable(query);
+                                dtRow.SetField<Int32>("AMD3_ID", polyID);
 
-
-                                DataRow row = ResultTable.NewRow();
-                                row["msgID"] = dtRow.Field<Int64>("msgID");
-                                row["AMD3_ID"] = polyID;
-                                ResultTable.Rows.Add(row);
+                                //DataRow row = ResultTable.NewRow();
+                                //row["msgID"] = dtRow.Field<Int64>("msgID");
+                                //row["AMD3_ID"] = polyID;
+                                //ResultTable.Rows.Add(row);
 
 
                             }
-                            //else {
-                            //    dtRow.Delete();
 
-                            //}
 
                             IDXpoint++;
 
@@ -126,26 +130,32 @@ namespace YieldAnalyzer
 
 
                         }//);
-                        
-                        
-                        //disp.dispDT(ResultTable);
+
+
+                        //
+
+                        PointTableEnv.Columns.Remove("location");
+
+
+                        //PointTableEnv.Columns.Add("AMD3_ID", typeof(Int32));
 
 
 
-                       
                         Console.Write(count.ToString() + " Points inside\t");
 
 
                         string destinationtable = "[dbo].[msgID_AMD3_ID]";
                         //SQLServer.writeDT(ResultTable, destinationtable);
-                        SQLServer.WRITEDataTableToSQLServer(destinationtable, ResultTable, "weiboDEV");
+                        SQLServer.WRITEDataTableToSQLServer(destinationtable, PointTableEnv, "weiboDEV");
                         Console.WriteLine(" now in " + destinationtable);
-                        
+
                         count = 0;
                         //Console.ReadLine();
 
                     }
-                                        
+
+
+
 
                     Console.ReadLine();
                     break;
@@ -197,6 +207,126 @@ namespace YieldAnalyzer
 
 
                     Console.ReadLine();
+
+                    break;
+                case 3:
+                    //take Points and find matching Polygon
+                    Console.WriteLine("process 1: Update Points with ID from intersecting Polygon");
+                    Console.WriteLine(DateTime.Now + " Start to load PolyTable with:");
+                    query = "SELECT OBJECTID, Shape from weiboDEV.dbo.GADM_CHN_ADM3_SINGLE";
+                    Console.WriteLine(query);
+                    PolyTable = SQLServer.readDT(query);
+                    //disp.dispDT(PolyTable);
+                    Console.WriteLine("PolyTable has " + PolyTable.Rows.Count + " records");
+
+                    Int64 msgIDmax = 0;
+                    for (Int32 i = 0; i < 1000; i++)
+                    {
+                        Console.WriteLine("Select Points based on msgID");
+                        if (i == 0)
+                        {
+                            query = "SELECT top 100 [msgID],[location] FROM weiboDEV.dbo.NBT4_exact_copy_GEO where [msgID] < 99999999999999999 AND [msgID] > " + msgIDmax.ToString() + " ORDER BY [msgID];";
+                        }
+
+
+                        PointTable = SQLServer.readDT(query);
+                        //Console.WriteLine("PointTableEnv has " + PointTableEnv.Rows.Count + " records");
+                        if (PointTable.Rows.Count == 0)
+                        {
+                            Console.WriteLine("");
+                            continue;
+                        }
+
+                        //Add Column
+                        PointTable.Columns.Add("AMD3_ID", typeof(Int32));
+                        PointTable.AcceptChanges();
+
+
+                        SqlGeography point = new SqlGeography();
+                        SqlGeography polygon = new SqlGeography();
+                        Int64 msgID = 0;
+                        int IDX = 0;
+                        //Parallel.ForEach(PointTable.AsEnumerable(), new ParallelOptions { MaxDegreeOfParallelism = 3 }, dtPOINTRow =>
+                        foreach (DataRow dtPOINTRow in PointTable.Rows)
+                        {
+                            //Console.WriteLine(dtPOINTRow["msgID"].GetType() + dtPOINTRow["msgID"].ToString());
+
+                            IDX++;
+                            Console.WriteLine(IDX.ToString() + "\t");
+                            point = dtPOINTRow.Field<SqlGeography>("location");
+                            //find max msgID
+                            msgID = (Int64)dtPOINTRow["msgID"];
+                            if (msgID > msgIDmax)
+                            {
+                                msgIDmax = msgID;
+                            }
+
+                            //point.STIntersection(PointTable.Columns["Shape"]);
+
+
+                            foreach (DataRow dtPOLYRow in PolyTable.Rows)
+                            {
+                                polygon = dtPOLYRow.Field<SqlGeography>("Shape");      //PolyTable.Rows[i].Field<SqlGeography>("Shape");
+
+                                Boolean inside = (Boolean)polygon.STIntersects(point);
+                                if (inside == false)
+                                {
+                                    dtPOINTRow.SetField<Int32>("AMD3_ID", (Int32)dtPOLYRow["OBJECTID"]); //set PolygonID in new table
+                                    dtPOINTRow.AcceptChanges();
+                                    continue;
+                                }
+                            }
+                        }//);//end of parallel loop
+                        disp.dispDT(PointTable);
+                        Console.ReadLine();
+                    }
+
+
+
+                    break;
+
+                case 4:
+                    int[] finished = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 58, 61, 62, 63, 66, 76, 87, 88, 89, 90, 92, 94, 100, 101, 102, 103, 104, 105, 107, 120, 169, 170, 171, 172, 173, 174, 175, 177, 182, 185, 187, 188, 189, 222, 228, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 276, 277, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366, 367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396, 397, 398, 399, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 421, 422, 423, 424, 425, 426, 427, 428, 429, 430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 450, 457, 468, 469, 470, 471, 472, 473, 474, 475, 477, 478, 479, 481, 483, 487, 497, 499, 550, 579, 580, 581, 583, 584, 585, 586, 588, 590, 609, 624, 625, 630, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648, 649, 650, 654, 656, 659, 677, 679, 680, 684, 685, 689, 690, 693, 694, 696, 697, 698, 699, 700, 701, 702, 703, 704, 705, 706, 707, 708, 709, 710, 712, 714, 715, 716, 718, 720, 721, 722, 723, 725, 736, 743, 744, 745, 746, 757, 758, 759, 764, 767, 777, 786, 787, 788, 789, 790, 791, 792, 793, 794, 795, 796, 797, 798, 799, 800, 801, 802, 803, 804, 805, 806, 807, 808, 809, 810, 811, 812, 813, 814, 815, 816, 817, 818, 819, 820, 821, 822, 823, 824, 825, 826, 827, 828, 829, 830, 831, 832, 833, 834, 835, 836, 837, 838, 839, 840, 841, 842, 843, 844, 845, 846, 847, 848, 849, 850, 851, 852, 853, 854, 855, 856, 857, 858, 859, 860, 861, 862, 865, 866, 882, 886, 887, 888, 889, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899, 902, 903, 904, 905, 906, 907, 908, 909, 910, 911, 917, 920, 921, 924, 925, 927, 929, 930, 933, 934, 937, 938, 939, 940, 941, 942, 943, 944, 945, 946, 949, 971, 973, 974, 975, 977, 980, 981, 982, 983, 984, 985, 986, 994, 998, 999, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1020, 1021, 1023, 1026, 1029, 1033, 1034, 1036, 1041, 1042, 1043, 1044, 1045, 1046, 1047, 1048, 1049, 2179, 2180, 2181, 2182, 2183, 2184, 2185, 2186, 2187, 2188, 2189, 2190, 2191, 2192, 2193, 2194, 2195, 2196, 2197, 2198, 2199, 2200, 2201, 2202, 2203, 2204, 2205, 2206, 2207, 2208, 2209, 2210, 2211, 2212, 2213, 2214, 2215, 2216, 2217, 2218, 2219, 2220, 2221, 2222, 2223, 2224, 2225, 2226, 2227, 2228, 2229, 2230, 2231, 2232, 2233, 2234, 3349, 3350, 3351, 3352, 3353, 3354, 3355, 3356, 3357, 3358, 3359, 3360, 3361, 3362, 3363, 3364, 3365, 3366, 3367, 3368, 3369, 3370, 3371, 3372, 3373, 3374, 3375, 3376, 3377, 3378, 3379, 3380, 3381, 3382, 3383 };
+
+
+                    Console.WriteLine("At which ID (int) do you want to start?");
+                    string line = Console.ReadLine();
+                    int value;
+                    if (int.TryParse(line, out value)) // Try to parse the string as an integer
+                    {
+                        Console.WriteLine("OK!");
+
+                    }
+                    else
+                    {
+                        Console.WriteLine("Not an integer!");
+                    }
+
+                    ParallelOptions options = new ParallelOptions();
+                    options.MaxDegreeOfParallelism = 3;
+                    
+
+                    Parallel.For(value, 4521, options, i =>
+                    //for (int i = value; i < 5000; i++)
+                    {
+                        int pos = Array.IndexOf(finished, i);
+                        if (pos > -1)
+                        {
+                            Console.WriteLine("Call stored procedure test for Polygon ID:" + i.ToString() + " not necessary");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Call stored procedure test for Polygon ID:" + i.ToString());
+                        SQLServer.CallSQLStoredProcedure("weiboDEV", "test", i);
+                        }
+                        
+                        
+
+
+
+
+                    });
+
 
                     break;
                 default:
@@ -286,7 +416,7 @@ namespace YieldAnalyzer
             }
             if (db == "Weibo")
             {
-                
+
                 //myConnection = new SqlConnection(Properties.Settings.Default.MSSQLtimo);
 
             }
@@ -303,7 +433,51 @@ namespace YieldAnalyzer
             }
             return myConnection;
         }
-        
+
+        static public int CallSQLStoredProcedure(string db, string proc, int id)
+        {
+
+
+            SqlConnection myConnection = new SqlConnection(Properties.Settings.Default.SQL_Michael);
+
+            //CONNECT
+            if (db == "weiboDEV")
+            {
+                myConnection = new SqlConnection(Properties.Settings.Default.SQL_Michael);
+
+            }
+            if (db == "Weibo")
+            {
+
+                //myConnection = new SqlConnection(Properties.Settings.Default.MSSQLtimo);
+
+            }
+            //Console.WriteLine(myConnection.ToString());   
+            int result = 0;
+
+            try
+            {
+                myConnection.Open();
+
+
+                SqlCommand comm = myConnection.CreateCommand();
+                comm.CommandType = CommandType.StoredProcedure;
+                comm.CommandText = proc;
+                comm.CommandTimeout = 10000; //5 mins
+                comm.Parameters.Add(new SqlParameter("@ID", id.ToString()));
+                comm.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
+
+
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+            myConnection.Close();
+            return result;
+        }
+
         static public DataTable readDT(string query)
         {
             //CONNECT
@@ -328,7 +502,7 @@ namespace YieldAnalyzer
             //using (var da = new SqlDataAdapter(query, myConnection))
             using (var da = new SqlDataAdapter(command))
             {
-                
+
                 da.Fill(table);
             }
 
@@ -339,20 +513,20 @@ namespace YieldAnalyzer
 
         }
 
-        static public void writeDT(DataTable dt,string tablename)
+        static public void writeDT(DataTable dt, string tablename)
         {
             //SqlBulkCopy sqlBulkCopy = new SqlBulkCopy(Properties.Settings.Default.SQL_Michael);
             //sqlBulkCopy.DestinationTableName = "MySpatialDataTable";
             //sqlBulkCopy.WriteToServer(dataTable);
 
             string connectionString = Properties.Settings.Default.SQL_Michael;
-        // Open a connection to the AdventureWorks database. 
+            // Open a connection to the AdventureWorks database. 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
                 connection.Open();
 
 
-           
+
 
                 // Create the SqlBulkCopy object.  
                 // Note that the column positions in the source DataTable  
@@ -375,8 +549,8 @@ namespace YieldAnalyzer
 
                 connection.Close();
 
-            }   
-            
+            }
+
         }
 
         static public bool WRITEDataTableToSQLServer(string tableName, DataTable dataTable, string database)
@@ -390,7 +564,7 @@ namespace YieldAnalyzer
                 {
                     SqlConnection SqlConnectionObj = SQLServer.GetSQLServerConnection(database);
 
-                    SqlBulkCopy bulkCopy = new SqlBulkCopy(SqlConnectionObj, SqlBulkCopyOptions.TableLock | SqlBulkCopyOptions.FireTriggers | SqlBulkCopyOptions.UseInternalTransaction, null );
+                    SqlBulkCopy bulkCopy = new SqlBulkCopy(SqlConnectionObj, SqlBulkCopyOptions.TableLock | SqlBulkCopyOptions.FireTriggers | SqlBulkCopyOptions.UseInternalTransaction, null);
                     bulkCopy.BulkCopyTimeout = 3600;
                     bulkCopy.DestinationTableName = tableName;
                     bulkCopy.WriteToServer(dataTable);
@@ -401,10 +575,10 @@ namespace YieldAnalyzer
                     isSuccuss = false;
                     Console.WriteLine(ex.ToString());
                 }
-            scope.Complete();
+                scope.Complete();
             }
 
-            
+
             return isSuccuss;
 
         }

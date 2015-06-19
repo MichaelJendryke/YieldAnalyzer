@@ -1,6 +1,6 @@
 E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\bin\Debug\YieldAnalyzer.exe.config
 E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\bin\Debug\YieldAnalyzer.exe
 E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\bin\Debug\YieldAnalyzer.pdb
-E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\obj\Debug\YieldAnalyzer.csprojResolveAssemblyReference.cache
 E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\obj\Debug\YieldAnalyzer.exe
 E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\obj\Debug\YieldAnalyzer.pdb
+E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\obj\Debug\YieldAnalyzer.csprojResolveAssemblyReference.cache
