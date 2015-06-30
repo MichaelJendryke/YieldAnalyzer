@@ -6,11 +6,14 @@ using System.Transactions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Data;
+
 using System.Data.SqlClient;
 using Microsoft.SqlServer.Types;
 
 using System.Text.RegularExpressions;
 using ProSQLSpatial;
+
+using TriangleNet;
 
 //using Calculations;
 //using ProSQLSpatial;
@@ -22,7 +25,7 @@ namespace YieldAnalyzer
         static void Main(string[] args)
         {
             Console.WriteLine(DateTime.Now + " 你好 Welcome");
-            int process = 5;
+            int process = 6;
 
             string query = "";
             DataTable PolyTable = new DataTable();
@@ -332,70 +335,160 @@ namespace YieldAnalyzer
 
                     break;
                 case 5:
-                    Console.Write("SELECT geometry::UnionAggregate([geom]) as geom FROM [weiboDEV].[dbo].[tempgeometry]");
-                    query = "SELECT geometry::UnionAggregate([geom]) as geom FROM [weiboDEV].[dbo].[tempgeometry]";
+                    int numberofpoints = 1000000;
+                    query = "SELECT geometry::UnionAggregate([geom]) as mp FROM (Select top "+numberofpoints+" [locationgeom] as geom from [dbo].[Shanghai_262]) a";
+                    Console.Write(query);
                     DataTable MultiPoint = new DataTable();
                     MultiPoint = SQLServer.readDT(query);
                     //disp.dispDT(MultiPoint);
                     Console.WriteLine(".. done");
-
+                    Console.WriteLine("Delivered: " + MultiPoint.Rows.Count.ToString() + " Rows");
+                    
                     SqlConnection conn = new SqlConnection();
                     conn = SQLServer.GetSQLServerConnection(Properties.Settings.Default.SQL_Michael);
 
                     SqlCommand comm = new SqlCommand();
-                    comm.CommandText = "GeometryTriangulate";
+                    comm.CommandText = "GeometryTriangulateEdge";
                     comm.CommandType = CommandType.StoredProcedure;
                     comm.Connection = conn;
 
                     SqlGeometry P = new SqlGeometry();
                     foreach (DataRow dtPOINTRow in MultiPoint.Rows)
                         {
-                            P = dtPOINTRow.Field<SqlGeometry>("geom");
+                            P = dtPOINTRow.Field<SqlGeometry>("mp");
                     }
 
-                    Console.WriteLine(P.STNumGeometries());
+                    Console.WriteLine("UnionAggregate has found "  + P.STNumPoints() + " unique points of totally " + numberofpoints.ToString() + " points");
+                    //Console.WriteLine(P.ToString());
 
-                    SqlParameter Points = new SqlParameter("@MultiPolygon", P);
+                    SqlParameter Points = new SqlParameter("@MultiPoint", P);
                     Points.UdtTypeName = "geometry";
                     comm.Parameters.Add(Points);
+                    comm.CommandTimeout = 99999;
+                    
+                    
                     var table = new DataTable();
-                    table.Columns.Add("geom", typeof(SqlGeometry));
-                    table.PrimaryKey = new DataColumn[] { table.Columns["geom"] };
                     
-                    
-                        
+
+                    DataColumn workCol = table.Columns.Add("strg", typeof(String));
+                    workCol.AllowDBNull = false;
+                    workCol.Unique = true;
+                    // set primary key
+                    table.PrimaryKey = new DataColumn[] { table.Columns["strg"] };
+
+
+
+//                    table.Columns.Add("strg", typeof(String));
+//                    workCol.AllowDBNull = false;
+//workCol.Unique = true;
+//                    table.PrimaryKey = new DataColumn[] { table.Columns["strg"] };
+
+
+                    int countRes = 0;
+                    int countGood = 0;
                         SqlDataReader datareader = comm.ExecuteReader();
                         while (datareader.Read())
                         {
+
+                            countRes++;
                             
-                            SqlGeometry tri = SqlGeometry.Deserialize(datareader.GetSqlBytes(0));
+                            SqlGeometry edge = SqlGeometry.Deserialize(datareader.GetSqlBytes(0));
                             DataRow workRow = table.NewRow();
                             
-                            //workRow["geom"] = tri;
+                            workRow["strg"] = edge.ToString();
 
-                            workRow["geom"] = tri.STBoundary().STCurveN(1); // this is only the first segment!!!
-                            var exisiting = table.Rows.Find(workRow);
-                            if (exisiting == null)
+                            //workRow["geom"] = tri.STBoundary().STCurveN(1); // this is only the first segment!!!
+                            //var exisiting = table.Rows.Find(workRow);
+                            //if (exisiting == null)
+                            string s = edge.ToString();
+                            //Console.WriteLine(s);
+                            DataRow drFound = table.Rows.Find(s);
+                            //Console.WriteLine(drFound);
+
+                            if (drFound == null)
                             {
+                                countGood++;
                                 table.Rows.Add(workRow);
                             }
-
-                            //Console.WriteLine(tri.STBoundary().STCurveN(1).ToString());
                             
-
+             
                         
                                 
                         }
+//write the rest to SQL
+                        DataTable res = new DataTable();
+                        res.Columns.Add("id", typeof(Int32));
+                        res.Columns.Add("length", typeof(double));
+                        res.Columns.Add("geog", typeof(SqlGeography));
+
+                        Int32 r = 0;
+                        foreach (DataRow DRow in table.Rows){
+                            //Console.WriteLine(DRow["strg"]);
+
+                            //SqlGeometry edge = SqlGeometry.STGeomFromText(new System.Data.SqlTypes.SqlChars(DRow["strg"].ToString()), 4326);
+                            SqlGeography edge = SqlGeography.STGeomFromText(new System.Data.SqlTypes.SqlChars(DRow["strg"].ToString()), 4326);
+
+                            //Console.WriteLine(edge.STLength().ToString());
 
 
 
+                            DataRow workRow = res.NewRow();
+                            workRow["id"] = r;
+                            workRow["length"] = (double)edge.STLength();
+                            workRow["geog"] = edge;
+                            
+                            res.Rows.Add(workRow);
+                            r++;
+                        }
+
+
+                        SQLServer.writeDT(res, "[dbo].[TempTriangleEdges]");
+
+
+//disp.dispDT(res);
+                        Console.WriteLine(countRes.ToString());
+                        Console.WriteLine(countGood.ToString());
+                        
 
                     //datatable with unique field
 
                     
-                    disp.dispDT(table);
-                    SQLServer.writeDT(table, "[dbo].[test2]");
-                    Console.ReadLine();
+                    //
+                        Console.ReadLine();
+                    //SQLServer.writeDT(table, "[dbo].[test2]");
+                    
+
+                    break;
+                case 6:
+                     numberofpoints = 1000000;
+                     query = "  Select top "+numberofpoints+" [location].Long as LONG, [location].Lat as LAT from [weiboDEV].[dbo].[Shanghai_262]";
+                    Console.Write(query);
+                    DataTable dtP = new DataTable();
+                    dtP = SQLServer.readDT(query);
+                    //disp.dispDT(MultiPoint);
+                    Console.WriteLine(".. done");
+                    string filename = @"E:\Dropbox\DATA\research\GhostTowns\WB\Triangle.NET\Data\test.node";
+                    using (System.IO.StreamWriter file = new System.IO.StreamWriter(filename+"", true))
+                    {
+                        int i = 1;
+                        file.WriteLine(dtP.Rows.Count.ToString() + " 2 1 0");
+                        foreach (DataRow DRow in dtP.Rows)
+                        {
+                            string s = i.ToString() + " " + DRow["Long"].ToString() + " " + DRow["Lat"].ToString()+ " 0";
+                            file.WriteLine(s);
+
+                            i++;
+                        }
+
+                    }
+                    Mesh mesh = new Mesh();
+                    var geometry = TriangleNet.IO.FileReader.ReadNodeFile(filename);
+                    TriangleNet.Behavior.Verbose = true;
+                    mesh.Triangulate(geometry);
+
+                    // Use the FileWriter class to save the mesh.
+                    TriangleNet.IO.FileWriter.Write(mesh, @"E:\Dropbox\DATA\research\GhostTowns\WB\Triangle.NET\Data\some-mesh.ele");
+
 
                     break;
                 default:
