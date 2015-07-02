@@ -6,6 +6,7 @@ using System.Transactions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Data;
+using System.Diagnostics;
 
 using System.Data.SqlClient;
 using Microsoft.SqlServer.Types;
@@ -461,21 +462,23 @@ namespace YieldAnalyzer
 
                     break;
                 case 6:
-                    numberofpoints = 100;
-                    query = "  Select top " + numberofpoints + " [location].Long as LONG, [location].Lat as LAT from [weiboDEV].[dbo].[Shanghai_262]";
+                    numberofpoints = 13000000;
+                    query = "  Select top " + numberofpoints + " [msgID],[location].Long as LONG, [location].Lat as LAT from [weiboDEV].[dbo].[Shanghai_262]";
                     Console.Write(query);
                     DataTable dtP = new DataTable();
                     dtP = SQLServer.readDT(query);
                     //disp.dispDT(dtP);
                     Console.WriteLine(".. done");
                     string filename = @"E:\Dropbox\DATA\research\GhostTowns\WB\Triangle.NET\Data\test.node";
-                    using (System.IO.StreamWriter file = new System.IO.StreamWriter(filename + "", true))
+                    using (System.IO.StreamWriter file = new System.IO.StreamWriter(filename + "", false))
                     {
                         int i = 1;
                         file.WriteLine(dtP.Rows.Count.ToString() + " 2 1 0");
                         foreach (DataRow DRow in dtP.Rows)
                         {
+                            // string with incrementing ID
                             string s = i.ToString() + " " + DRow["Long"].ToString() + " " + DRow["Lat"].ToString() + " 0";
+
                             file.WriteLine(s);
 
                             i++;
@@ -483,17 +486,78 @@ namespace YieldAnalyzer
 
                     }
                     Mesh mesh = new Mesh();
-                    
+
                     var geometry = TriangleNet.IO.FileReader.ReadNodeFile(filename);
+                    //TriangleNet.Behavior.Verbose = true;
                     mesh.Triangulate(geometry);
+                    bool isConsistent, isDelaunay;
+                    mesh.Check(out isConsistent, out isDelaunay);
                     Console.WriteLine("The number of input Points is: " + mesh.NumberOfInputPoints.ToString());
                     Console.WriteLine("The number of output Edges is: " + mesh.NumberOfEdges.ToString());
-                    TriangleNet.Behavior.Verbose = true;
-                    for (int e = 0; e < mesh.NumberOfEdges; e++)
+                    Console.WriteLine("Mesh is Consistent " + isConsistent.ToString() + " and is Delaunay " + isDelaunay.ToString());
+                    TriangleNet.IO.FileWriter.WriteEdges(mesh, @"E:\Dropbox\DATA\research\GhostTowns\WB\Triangle.NET\Data\edges.ele");
+
+                    //Console.WriteLine(dtP.Columns["msgID"].DataType);
+
+                    DataTable result = new DataTable();
+                    result.Columns.Add("id", typeof(Int32));
+                    result.Columns.Add("msgIDf", typeof(Int64));
+                    result.Columns.Add("msgIDl", typeof(Int64));
+                    result.Columns.Add("edgeLength", typeof(double));
+                    result.Columns.Add("geography", typeof(SqlGeography));
+
+
+
+
+                    double tenpercent = mesh.NumberOfEdges / 100;
+                    tenpercent = Math.Truncate(tenpercent);
+
+
+                    int x = 1;
+                    int t = 0;
+                    Console.Write("0");
+
+                    //            ParallelOptions Poptions = new ParallelOptions();
+                    //Poptions.MaxDegreeOfParallelism = 4;
+                    //Poptions.TaskScheduler = 4;
+                    //int e = 0;
+                    Stopwatch stopwatch = new Stopwatch();
+
+                    // Begin timing
+                    stopwatch.Start();
+                    //Parallel.For(0, mesh.NumberOfEdges, new ParallelOptions { MaxDegreeOfParallelism = 4 }, e =>
+                    //string o = @"E:\Dropbox\DATA\research\GhostTowns\WB\Triangle.NET\Data\output.csv";
+
+                    //System.IO.StreamWriter outfile = new System.IO.StreamWriter(o + "", false);
+                    //outfile.WriteLine("INSERT [weiboDEV].[dbo].[TempTriangleDotNetOutput] ([id], [msgIDf], [msgIDl], [edgeLength], [geography]) VALUES ");
+
+
+
+
+                    var meshList = new TupleList<int, int, int>();
+                    Console.WriteLine("Populate List");
+
+                    string infile = @"E:\Dropbox\DATA\research\GhostTowns\WB\Triangle.NET\Data\edges.ele";
+                    ///////////////////////////////////////////////
+                    int counter = 0;
+                    string linet;
+                    // Read the file and display it line by line.
+                    System.IO.StreamReader fileIN = new System.IO.StreamReader(infile);
+
+                    while ((linet = fileIN.ReadLine()) != null)
                     {
-                        int f = mesh.Edges.ElementAt(e).P0;
-                        int l = mesh.Edges.ElementAt(e).P1;
-                        string fLat  = dtP.Rows[f]["Lat"].ToString();
+                        if (counter == 0) {
+                            counter++;
+                            continue;
+                        }
+                        var a = linet.Split(' ');
+                        System.Console.WriteLine(Int32.Parse(a[0]));
+                        counter++;
+
+                        int f = Int32.Parse(a[1]);
+                        int l = Int32.Parse(a[2]);
+
+                        string fLat = dtP.Rows[f]["Lat"].ToString();
                         string fLong = dtP.Rows[f]["Long"].ToString();
                         string lLat = dtP.Rows[l]["Lat"].ToString();
                         string lLong = dtP.Rows[l]["Long"].ToString();
@@ -502,21 +566,217 @@ namespace YieldAnalyzer
                         int srid = 4326;
                         SqlGeography edge = SqlGeography.STGeomFromText(LineSqlChar, srid);
                         double edgeLength = (double)edge.STLength();
-                        Console.WriteLine(e.ToString() + ": " 
-                                        + f.ToString() + " to " 
-                                        + l.ToString() + "\t"
-                                        + edge.ToString() + "\t"
-                                        + edgeLength.ToString());
 
-                        
+
+
+
+
+
+
+
+                        //string op = "(" + e.ToString() + ", " +
+                        //            dtP.Rows[f]["msgID"].ToString() + ", " +
+                        //            dtP.Rows[l]["msgID"].ToString() + ", " +
+                        //            edgeLength.ToString() +", " +
+                        //            "geography::STGeomFromText('"+LineString+"',"+srid.ToString()+")),";
+                        //if (e == mesh.NumberOfEdges) { 
+                        //op = op.Remove(op.Length - 1);
+                        //}
+                        //string op = e.ToString() + ", " +
+                        //                dtP.Rows[f]["msgID"].ToString() + ", " +
+                        //               dtP.Rows[l]["msgID"].ToString() + ", " +
+                        //                edgeLength.ToString() +", " +
+                        //               "geography::STGeomFromText('"+LineString+"',"+srid.ToString()+")";
+
+
+                        //Console.WriteLine(op);
+
+                        //try
+                        //{
+                        //    outfile.WriteLine(op);
+                        //}catch (Exception ex){
+                        //Console.WriteLine(ex);
+                        //}
+
+
+
+                        lock (result)
+                        {
+                            DataRow workRow = result.NewRow();
+
+                            workRow["id"] = Int32.Parse(a[0]);
+                            workRow["msgIDf"] = dtP.Rows[f]["msgID"];
+                            workRow["msgIDl"] = dtP.Rows[l]["msgID"];
+                            workRow["edgeLength"] = edgeLength;
+                            workRow["geography"] = edge;
+
+                            result.Rows.Add(workRow);
+                        }
+
+
+
+                        //Console.WriteLine(e.ToString() + ": "
+                        //                + f.ToString() + " to "
+                        //                + l.ToString() + " "
+                        //                + edge.ToString() + " "
+                        //                + edgeLength.ToString() + " "
+                        //                + dtP.Rows[f]["msgID"].ToString() + "-->"
+                        //                + dtP.Rows[l]["msgID"].ToString());
+
+                        //if (counter == x * tenpercent)
+                        //{
+                        //    Console.Write(".." + (x * 1).ToString());
+                        //    x++;
+                        //}
+                        t++;
+
+
+                        if (t == 100000)
+                        {
+                            Console.Write("full");
+                            lock (result)
+                            {
+                                SQLServer.writeDT(result, "[dbo].[TempTriangleDotNetOutput]");
+                                t = 0;
+                                result.Clear();
+                            }
+                        }
+
 
                     }
-                    Console.ReadLine();
-                    disp.dispDT(dtP);
+
+                    fileIN.Close();
+                    System.Console.WriteLine("There were {0} lines.", counter);
+                   /////////////////////////////////////////////
+
+
+                    //for (int j = 0; j < mesh.NumberOfEdges; j++)
+                    //{
+                    //    meshList.Add(j, mesh.Edges.ElementAt(j).P0, mesh.Edges.ElementAt(j).P1);
+                    //    //Console.Write(".");
+                    //    if (j == x * tenpercent)
+                    //    {
+                    //        Console.Write(".." + (x * 1).ToString());
+                    //        x++;
+                    //    }
+
+
+                    //}
+                    //Console.WriteLine("done!");
+                    //x = 1;
+
+                    //for (int e = 0; e < mesh.NumberOfEdges; e++)
+                    //for (int e = 0; e < meshList.Count(); e++)
+                    //{
+                    //    //int f = mesh.Edges.ElementAt(e).P0;
+                    //    //int l = mesh.Edges.ElementAt(e).P1;
+                    //    int f = meshList[1].Item2;
+                    //    int l = meshList[2].Item3;
+
+                    //    string fLat = dtP.Rows[f]["Lat"].ToString();
+                    //    string fLong = dtP.Rows[f]["Long"].ToString();
+                    //    string lLat = dtP.Rows[l]["Lat"].ToString();
+                    //    string lLong = dtP.Rows[l]["Long"].ToString();
+                    //    string LineString = "LINESTRING(" + fLong + " " + fLat + ", " + lLong + " " + lLat + ")";
+                    //    System.Data.SqlTypes.SqlChars LineSqlChar = new System.Data.SqlTypes.SqlChars(LineString);
+                    //    int srid = 4326;
+                    //    SqlGeography edge = SqlGeography.STGeomFromText(LineSqlChar, srid);
+                    //    double edgeLength = (double)edge.STLength();
+
+
+
+
+
+
+
+
+                    //    //string op = "(" + e.ToString() + ", " +
+                    //    //            dtP.Rows[f]["msgID"].ToString() + ", " +
+                    //    //            dtP.Rows[l]["msgID"].ToString() + ", " +
+                    //    //            edgeLength.ToString() +", " +
+                    //    //            "geography::STGeomFromText('"+LineString+"',"+srid.ToString()+")),";
+                    //    //if (e == mesh.NumberOfEdges) { 
+                    //    //op = op.Remove(op.Length - 1);
+                    //    //}
+                    //    //string op = e.ToString() + ", " +
+                    //    //                dtP.Rows[f]["msgID"].ToString() + ", " +
+                    //    //               dtP.Rows[l]["msgID"].ToString() + ", " +
+                    //    //                edgeLength.ToString() +", " +
+                    //    //               "geography::STGeomFromText('"+LineString+"',"+srid.ToString()+")";
+
+
+                    //    //Console.WriteLine(op);
+
+                    //    //try
+                    //    //{
+                    //    //    outfile.WriteLine(op);
+                    //    //}catch (Exception ex){
+                    //    //Console.WriteLine(ex);
+                    //    //}
+
+
+
+                    //    lock (result)
+                    //    {
+                    //        DataRow workRow = result.NewRow();
+
+                    //        workRow["id"] = e;
+                    //        workRow["msgIDf"] = dtP.Rows[f]["msgID"];
+                    //        workRow["msgIDl"] = dtP.Rows[l]["msgID"];
+                    //        workRow["edgeLength"] = edgeLength;
+                    //        workRow["geography"] = edge;
+
+                    //        result.Rows.Add(workRow);
+                    //    }
+
+
+
+                    //    //Console.WriteLine(e.ToString() + ": "
+                    //    //                + f.ToString() + " to "
+                    //    //                + l.ToString() + " "
+                    //    //                + edge.ToString() + " "
+                    //    //                + edgeLength.ToString() + " "
+                    //    //                + dtP.Rows[f]["msgID"].ToString() + "-->"
+                    //    //                + dtP.Rows[l]["msgID"].ToString());
+
+                    //    if (e == x * tenpercent)
+                    //    {
+                    //        Console.Write(".." + (x * 1).ToString());
+                    //        x++;
+                    //    }
+                    //    t++;
+
+
+                    //    if (t == 1000)
+                    //    {
+                    //        Console.Write("full");
+                    //        lock (result)
+                    //        {
+                    //            SQLServer.writeDT(result, "[dbo].[TempTriangleDotNetOutput]");
+                    //            t = 0;
+                    //            result.Clear();
+                    //        }
+                    //    }
+
+
+                    //}
+                    //);
+
+                    // Stop timing
+                    stopwatch.Stop();
+                    //outfile.Close();
+                    // Write result
+                    Console.WriteLine("Time elapsed: {0}",
+                        stopwatch.Elapsed);
+                    //disp.dispDT(result);
+                    Console.Write("  done.");
+                    Console.Write("Upload to server ..  ");
+                    SQLServer.writeDT(result, "[dbo].[TempTriangleDotNetOutput]");
+                    Console.Write("done");
                     Console.ReadLine();
 
                     // Use the FileWriter class to save the mesh.
-                    TriangleNet.IO.FileWriter.Write(mesh, @"E:\Dropbox\DATA\research\GhostTowns\WB\Triangle.NET\Data\some-mesh.ele");
+                    //TriangleNet.IO.FileWriter.Write(mesh, @"E:\Dropbox\DATA\research\GhostTowns\WB\Triangle.NET\Data\some-mesh.ele");
 
 
                     break;
@@ -563,6 +823,15 @@ namespace YieldAnalyzer
 
         }
     }
+
+    public class TupleList<T1, T2, T3> : List<Tuple<T1, T2, T3>>
+    {
+        public void Add(T1 item, T2 item2, T3 item3)
+        {
+            Add(new Tuple<T1, T2, T3>(item, item2, item3));
+        }
+    }
+
 
 
 
@@ -729,6 +998,7 @@ namespace YieldAnalyzer
                 using (SqlBulkCopy bulkCopy = new SqlBulkCopy(connection))
                 {
                     bulkCopy.DestinationTableName = tablename;
+                    bulkCopy.BulkCopyTimeout = 600;
 
                     try
                     {
