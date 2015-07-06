@@ -462,7 +462,7 @@ namespace YieldAnalyzer
 
                     break;
                 case 6:
-                    numberofpoints = 13000000;
+                    numberofpoints = 1000000;
                     query = "  Select top " + numberofpoints + " [msgID],[location].Long as LONG, [location].Lat as LAT from [weiboDEV].[dbo].[Shanghai_262]";
                     Console.Write(query);
                     DataTable dtP = new DataTable();
@@ -541,12 +541,29 @@ namespace YieldAnalyzer
                     ///////////////////////////////////////////////
                     int counter = 0;
                     string linet;
+
+
+                    //GeoJSON Writer
+                    string gj = @"F:\LINUX\GIS\temp\output.geojson";
+                    System.IO.StreamWriter geojson = new System.IO.StreamWriter(gj + "", false);
+
+                    geojson.WriteLine("{");
+                    geojson.WriteLine("\"type\": \"FeatureCollection\",");
+                    geojson.WriteLine("\"crs\": { \"type\": \"name\", \"properties\": { \"name\": \"urn:ogc:def:crs:OGC:1.3:CRS84\" } },");
+                    //geojson.WriteLine("");
+                    geojson.WriteLine("\"features\": [");
+
+                    ///
+
+
+
                     // Read the file and display it line by line.
                     System.IO.StreamReader fileIN = new System.IO.StreamReader(infile);
 
                     while ((linet = fileIN.ReadLine()) != null)
                     {
-                        if (counter == 0) {
+                        if (counter == 0)
+                        {
                             counter++;
                             continue;
                         }
@@ -567,8 +584,11 @@ namespace YieldAnalyzer
                         SqlGeography edge = SqlGeography.STGeomFromText(LineSqlChar, srid);
                         double edgeLength = (double)edge.STLength();
 
-
-
+                        if (counter > 2)
+                        {
+                            geojson.WriteLine(", ");
+                        }
+                        geojson.Write(GeoJSON.ReturnFeatureString(counter.ToString(), edgeLength.ToString(), fLat, fLong, lLat, lLong));
 
 
 
@@ -646,8 +666,10 @@ namespace YieldAnalyzer
                     }
 
                     fileIN.Close();
+                    geojson.Write("]}");
+                    geojson.Close();
                     System.Console.WriteLine("There were {0} lines.", counter);
-                   /////////////////////////////////////////////
+                    /////////////////////////////////////////////
 
 
                     //for (int j = 0; j < mesh.NumberOfEdges; j++)
@@ -832,7 +854,21 @@ namespace YieldAnalyzer
         }
     }
 
+    class GeoJSON
+    {
 
+        static public string ReturnFeatureString(string id, string eL, string fLat, string fLong, string lLat, string lLong)
+        {
+            string s = "";
+
+            s = "{ \"type\": \"Feature\", \"geometry\": { \"type\": \"LineString\",\"coordinates\": [[" + fLong + ", " + fLat + "], [" + lLong + ", " + lLat + "]] }, \"properties\": { \"id\": " + id + ", \"edgeLength\": " + eL + "}}";
+
+            // s = "{{ \"type\": \"Feature\", \"properties\": {{ \"id\": "+id+", \"edgeLength\": 51.149324}, \"geometry\":";
+
+
+            return s;
+        }
+    }
 
 
     class disp
