@@ -27,7 +27,7 @@ namespace YieldAnalyzer.Properties {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.ConnectionString)]
         [global::System.Configuration.DefaultSettingValueAttribute("user id=username;password=password;server=Timo-Server;Trusted_Connection=yes;data" +
-            "base=weibo; connection timeout=120")]
+            "base=weibo; connection timeout=3600;Type System Version=latest;")]
         public string SQL_Timo {
             get {
                 return ((string)(this["SQL_Timo"]));
@@ -54,6 +54,17 @@ namespace YieldAnalyzer.Properties {
         public string SQL_Michael {
             get {
                 return ((string)(this["SQL_Michael"]));
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.ConnectionString)]
+        [global::System.Configuration.DefaultSettingValueAttribute("user id=username;password=password;server=Timo-Server;Trusted_Connection=yes;data" +
+            "base=FCD_Shanghai; connection timeout=3600;Type System Version=latest;")]
+        public string SQL_TimoFCD {
+            get {
+                return ((string)(this["SQL_TimoFCD"]));
             }
         }
     }

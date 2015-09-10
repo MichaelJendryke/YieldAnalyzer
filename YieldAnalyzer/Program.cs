@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Data;
 using System.Diagnostics;
+using System.Globalization;
 
 using System.Data.SqlClient;
 using Microsoft.SqlServer.Types;
@@ -15,6 +16,7 @@ using System.Text.RegularExpressions;
 using ProSQLSpatial;
 
 using TriangleNet;
+using TriangleNet.Geometry;
 
 //using Calculations;
 //using ProSQLSpatial;
@@ -26,7 +28,7 @@ namespace YieldAnalyzer
         static void Main(string[] args)
         {
             Console.WriteLine(DateTime.Now + " 你好 Welcome");
-            int process = 6;
+            int process = 7;
 
             string query = "";
             DataTable PolyTable = new DataTable();
@@ -462,7 +464,7 @@ namespace YieldAnalyzer
 
                     break;
                 case 6:
-                    numberofpoints = 1000000;
+                    numberofpoints = 2000;
                     query = "  Select top " + numberofpoints + " [msgID],[location].Long as LONG, [location].Lat as LAT from [weiboDEV].[dbo].[Shanghai_262]";
                     Console.Write(query);
                     DataTable dtP = new DataTable();
@@ -485,18 +487,85 @@ namespace YieldAnalyzer
                         }
 
                     }
+                    Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
                     Mesh mesh = new Mesh();
+
 
                     var geometry = TriangleNet.IO.FileReader.ReadNodeFile(filename);
                     //TriangleNet.Behavior.Verbose = true;
+
+
+
+                    //mesh.Behavior.MaxAngle = 95;
+                    //mesh.Behavior.MinAngle = 35;
+                    //mesh.Behavior.ConformingDelaunay = true;
+                    //mesh.Behavior.Convex = true;
+                    //mesh.Behavior.Quality = true;
+                    //mesh.Behavior.Poly = true;
+
+                    Console.WriteLine("Before triangulation");
                     mesh.Triangulate(geometry);
+                    Console.WriteLine("After triangulation");
+
+                    TriangleNet.Tools.Voronoi voronoi = new TriangleNet.Tools.Voronoi(mesh);
+                   
+
+                    //VORONOI start
+                    
+                    //var voronoi = TriangleNet.Tools.Voronoi(mesh);
+           
+
+
+
+                    //var voronoi = new TriangleNet.Tools.Voronoi(mesh);
+
+                    //Console.WriteLine("Doing Voronoi");
+                    //foreach (var region in voronoi.Regions)
+                    //{
+                    //    Console.WriteLine("Region ");
+                    //    var v = region.Vertices.ToArray();
+                    //    int n = v.Length;
+
+                    //    Console.Write("POLYGON({0:0.0} {1:0.0}", v[0].X, v[0].Y);
+
+                    //    for (int i = 1; i < n; i++)
+                    //    {
+                    //        Console.Write(", {0:0.0} {1:0.0}", v[i].X, v[i].Y);
+                    //    }
+
+                    //    if (region.Bounded)
+                    //    {
+                    //        // Close the polygon.
+                    //        Console.WriteLine(", {0:0.0} {1:0.0})", v[0].X, v[0].Y);
+                    //    }
+                    //    else
+                    //    {
+                    //        // Unbounded Voronoi cell.
+                    //        Console.WriteLine(")");
+                    //    }
+                    //}
+
+                    //VORONOI end
+
+
+
+
+
+
+
+
+                    string workdir = @"E:\Dropbox\DATA\research\GhostTowns\WB\Triangle.NET\Data\";
+
                     bool isConsistent, isDelaunay;
                     mesh.Check(out isConsistent, out isDelaunay);
                     Console.WriteLine("The number of input Points is: " + mesh.NumberOfInputPoints.ToString());
                     Console.WriteLine("The number of output Edges is: " + mesh.NumberOfEdges.ToString());
                     Console.WriteLine("Mesh is Consistent " + isConsistent.ToString() + " and is Delaunay " + isDelaunay.ToString());
-                    TriangleNet.IO.FileWriter.WriteEdges(mesh, @"E:\Dropbox\DATA\research\GhostTowns\WB\Triangle.NET\Data\edges.ele");
+                    TriangleNet.IO.FileWriter.WriteEdges(mesh, workdir + "edges.ele");
+                    TriangleNet.IO.FileWriter.WritePoly(mesh, workdir + "poly.ele", true);
+                    TriangleNet.IO.FileWriter.WriteVoronoi(mesh, workdir + "voronoi.out");
 
+                    Console.ReadLine();
                     //Console.WriteLine(dtP.Columns["msgID"].DataType);
 
                     DataTable result = new DataTable();
@@ -568,7 +637,7 @@ namespace YieldAnalyzer
                             continue;
                         }
                         var a = linet.Split(' ');
-                        System.Console.WriteLine(Int32.Parse(a[0]));
+                        Console.WriteLine(Int32.Parse(a[0]));
                         counter++;
 
                         int f = Int32.Parse(a[1]);
@@ -579,9 +648,18 @@ namespace YieldAnalyzer
                         string lLat = dtP.Rows[l]["Lat"].ToString();
                         string lLong = dtP.Rows[l]["Long"].ToString();
                         string LineString = "LINESTRING(" + fLong + " " + fLat + ", " + lLong + " " + lLat + ")";
+
                         System.Data.SqlTypes.SqlChars LineSqlChar = new System.Data.SqlTypes.SqlChars(LineString);
                         int srid = 4326;
-                        SqlGeography edge = SqlGeography.STGeomFromText(LineSqlChar, srid);
+
+
+                        SqlGeography edge = SqlGeography.STGeomFromText(LineSqlChar, srid).MakeValid();
+
+                        //Console.WriteLine(edge.IsValidDetailed());
+
+
+
+
                         double edgeLength = (double)edge.STLength();
 
                         if (counter > 2)
@@ -619,20 +697,21 @@ namespace YieldAnalyzer
                         //}
 
 
-
-                        lock (result)
+                        if (edgeLength >= 1)
                         {
-                            DataRow workRow = result.NewRow();
+                            lock (result)
+                            {
+                                DataRow workRow = result.NewRow();
 
-                            workRow["id"] = Int32.Parse(a[0]);
-                            workRow["msgIDf"] = dtP.Rows[f]["msgID"];
-                            workRow["msgIDl"] = dtP.Rows[l]["msgID"];
-                            workRow["edgeLength"] = edgeLength;
-                            workRow["geography"] = edge;
+                                workRow["id"] = Int32.Parse(a[0]);
+                                workRow["msgIDf"] = dtP.Rows[f]["msgID"];
+                                workRow["msgIDl"] = dtP.Rows[l]["msgID"];
+                                workRow["edgeLength"] = edgeLength;
+                                workRow["geography"] = edge;
 
-                            result.Rows.Add(workRow);
+                                result.Rows.Add(workRow);
+                            }
                         }
-
 
 
                         //Console.WriteLine(e.ToString() + ": "
@@ -795,10 +874,118 @@ namespace YieldAnalyzer
                     Console.Write("Upload to server ..  ");
                     SQLServer.writeDT(result, "[dbo].[TempTriangleDotNetOutput]");
                     Console.Write("done");
-                    Console.ReadLine();
+                    //Console.ReadLine();
 
                     // Use the FileWriter class to save the mesh.
                     //TriangleNet.IO.FileWriter.Write(mesh, @"E:\Dropbox\DATA\research\GhostTowns\WB\Triangle.NET\Data\some-mesh.ele");
+
+
+                    break;
+                case 7:
+                    //CSV to Server
+                    Console.WriteLine("Sending CSV file to SQL Server");
+                    string bulk_data_filename = @"F:\FCD_Shanghai\20100401.txt";
+                    // Read the file and display it line by line.
+                    
+                    System.IO.StreamReader fileINfcd = new System.IO.StreamReader(bulk_data_filename);
+
+                    DataTable dt = new DataTable();
+                    dt.Columns.Add("Datetime",typeof(DateTime));
+                    dt.Columns.Add("Time", typeof(DateTime));
+                    dt.Columns.Add("three", typeof(String));
+                    dt.Columns.Add("TaxiID", typeof(Int32));
+                    dt.Columns.Add("location", typeof(SqlGeography));
+                    dt.Columns.Add("speed", typeof(float));
+                    dt.Columns.Add("number1", typeof(int));
+                    dt.Columns.Add("number2", typeof(int));
+                    dt.Columns.Add("number3", typeof(int));
+                    dt.Columns.Add("FullDateTime", typeof(DateTime));
+                    //dt.Columns.Add("geography", typeof(SqlGeography));
+
+                    int c = 1;
+                    while ((linet = fileINfcd.ReadLine()) != null)
+                    {
+                      
+                        var a = linet.Split(',');
+
+                        //Console.WriteLine(Int32.Parse(a[0]));
+                        
+                        DataRow workRow = dt.NewRow();
+                        DateTime ddd = new DateTime(Int32.Parse(a[0].Substring(0, 4)), Int32.Parse(a[0].Substring(4, 2)), Int32.Parse(a[0].Substring(6, 2)), 0, 0, 0);
+
+                        if (a[1].Length != 6)
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            DateTime ttt = new DateTime(2000, 01, 01, Int32.Parse(a[1].Substring(0, 2)), Int32.Parse(a[1].Substring(2, 2)), Int32.Parse(a[1].Substring(4, 2)));
+                            workRow["Time"] = ttt;
+                        }
+                        
+                        string three = a[2].ToString();
+                        Int32 four = Int32.Parse(a[3]);
+                        string PointString = "POINT(" + a[4] + " " + a[5] + ")";
+                        System.Data.SqlTypes.SqlChars PointSqlChar = new System.Data.SqlTypes.SqlChars(PointString);
+                        int srid = 4326;
+                        SqlGeography point = SqlGeography.STGeomFromText(PointSqlChar, srid).MakeValid();
+                        float speed = float.Parse(a[6]);
+                        int nbr1 = int.Parse(a[7]);
+                        int nbr2 = int.Parse(a[8]);
+                        int nbr3 = int.Parse(a[9]);
+                        DateTime FullDateTime = DateTime.Parse(a[10].TrimEnd(';'), culture, System.Globalization.DateTimeStyles.AssumeLocal);
+                        
+
+
+                        workRow["Datetime"] = ddd;
+                        
+                        workRow["three"] = three;
+                        workRow["TaxiID"] = four;
+                        workRow["location"] = point;
+                        workRow["speed"] = speed;
+                        workRow["number1"] = nbr1;
+                        workRow["number2"] = nbr2;
+                        workRow["number3"] = nbr3;
+                        workRow["FullDateTime"] = FullDateTime;
+
+                        dt.Rows.Add(workRow);
+                        dt.AcceptChanges();
+                        //Console.WriteLine(dt.Rows.Count.ToString());
+
+
+                        int dtsize = 10000;
+                        if (dt.Rows.Count == dtsize)
+                        {
+                            Console.WriteLine("Send " + (c*dtsize).ToString());
+                            SQLServer.WRITEDataTableToTimoSQLServer("[dbo].[FCD_test]", dt, "FCD_Shanghai");
+                            c++;
+                            dt.Clear();
+                        }
+                        
+                    }
+                    Console.WriteLine("Send the last " + dt.Rows.Count.ToString() + " then close");
+                    SQLServer.WRITEDataTableToTimoSQLServer("[dbo].[FCD_test]", dt, "FCD_Shanghai");
+                    fileINfcd.Close();
+
+                    //disp.dispDT(dt);
+                    
+                    
+                    //Console.ReadLine();
+
+                    break;
+                case 8:
+
+
+                    break;
+                case 9:
+
+
+                    break;
+                case 10:
+
+
+                    break;
+                case 11:
 
 
                     break;
@@ -844,6 +1031,8 @@ namespace YieldAnalyzer
 
 
         }
+
+        public static IFormatProvider culture { get; set; }
     }
 
     public class TupleList<T1, T2, T3> : List<Tuple<T1, T2, T3>>
@@ -1074,6 +1263,41 @@ namespace YieldAnalyzer
                 {
                     isSuccuss = false;
                     Console.WriteLine(ex.ToString());
+                }
+                scope.Complete();
+            }
+
+
+            return isSuccuss;
+
+        }
+        
+        static public bool WRITEDataTableToTimoSQLServer(string tableName, DataTable dataTable, string database)
+        {
+
+            bool isSuccuss;
+            using (TransactionScope scope = new TransactionScope())
+            {
+
+                try
+                {
+                    
+                    SqlConnection SqlConnectionObj = new SqlConnection(Properties.Settings.Default.SQL_TimoFCD  );
+                    //Console.WriteLine(SqlConnectionObj.ConnectionString);
+                                        SqlConnectionObj.Open();
+                   
+                    SqlBulkCopy bulkCopy = new SqlBulkCopy(SqlConnectionObj, SqlBulkCopyOptions.TableLock | SqlBulkCopyOptions.FireTriggers | SqlBulkCopyOptions.UseInternalTransaction, null);
+                    bulkCopy.BulkCopyTimeout = 3600;
+                    bulkCopy.DestinationTableName = tableName;
+                    bulkCopy.WriteToServer(dataTable);
+                    isSuccuss = true;
+                    SqlConnectionObj.Close();
+                }
+                catch (Exception ex)
+                {
+                    isSuccuss = false;
+                    Console.WriteLine(ex.ToString());
+                    
                 }
                 scope.Complete();
             }
