@@ -508,12 +508,12 @@ namespace YieldAnalyzer
                     Console.WriteLine("After triangulation");
 
                     TriangleNet.Tools.Voronoi voronoi = new TriangleNet.Tools.Voronoi(mesh);
-                   
+
 
                     //VORONOI start
-                    
+
                     //var voronoi = TriangleNet.Tools.Voronoi(mesh);
-           
+
 
 
 
@@ -883,94 +883,234 @@ namespace YieldAnalyzer
                     break;
                 case 7:
                     //CSV to Server
-                    Console.WriteLine("Sending CSV file to SQL Server");
-                    string bulk_data_filename = @"F:\FCD_Shanghai\20100401.txt";
-                    // Read the file and display it line by line.
-                    
-                    System.IO.StreamReader fileINfcd = new System.IO.StreamReader(bulk_data_filename);
-
-                    DataTable dt = new DataTable();
-                    dt.Columns.Add("Datetime",typeof(DateTime));
-                    dt.Columns.Add("Time", typeof(DateTime));
-                    dt.Columns.Add("three", typeof(String));
-                    dt.Columns.Add("TaxiID", typeof(Int32));
-                    dt.Columns.Add("location", typeof(SqlGeography));
-                    dt.Columns.Add("speed", typeof(float));
-                    dt.Columns.Add("number1", typeof(int));
-                    dt.Columns.Add("number2", typeof(int));
-                    dt.Columns.Add("number3", typeof(int));
-                    dt.Columns.Add("FullDateTime", typeof(DateTime));
-                    //dt.Columns.Add("geography", typeof(SqlGeography));
-
-                    int c = 1;
-                    while ((linet = fileINfcd.ReadLine()) != null)
+                    int cc = 1;
+                    for ( cc = 1; cc < 31; cc++)
                     {
-                      
-                        var a = linet.Split(',');
+                        Console.WriteLine("Sending CSV file to SQL Server");
+                        string bulk_data_filename = @"F:\FCD_Shanghai\201004" + (cc.ToString().PadLeft(2, '0'))  + ".txt";
+                        //string bulk_data_filename = @"D:\HarvesterChina3\20100401.txt";
+                        //string bulk_data_filename = @"F:\FCD_Shanghai\taxidata.txt";
+                        // Read the file and display it line by line.
+                        Console.WriteLine(bulk_data_filename);
+                        System.IO.StreamReader fileINfcd = new System.IO.StreamReader(bulk_data_filename);
 
-                        //Console.WriteLine(Int32.Parse(a[0]));
-                        
-                        DataRow workRow = dt.NewRow();
-                        DateTime ddd = new DateTime(Int32.Parse(a[0].Substring(0, 4)), Int32.Parse(a[0].Substring(4, 2)), Int32.Parse(a[0].Substring(6, 2)), 0, 0, 0);
+                        DataTable dt = new DataTable();
+                        dt.Columns.Add("date", typeof(DateTime));
+                        dt.Columns.Add("time", typeof(DateTime));
+                        dt.Columns.Add("carowner", typeof(String));
+                        dt.Columns.Add("carid", typeof(int));
+                        dt.Columns.Add("longitude", typeof(float));
+                        dt.Columns.Add("latitude", typeof(float));
+                        dt.Columns.Add("velocity", typeof(float));
+                        dt.Columns.Add("drivingdirection", typeof(int));
+                        dt.Columns.Add("carstatus", typeof(SqlDbType));
+                        dt.Columns.Add("signalstatus", typeof(SqlDbType));
+                        dt.Columns.Add("recordtime", typeof(DateTime));
+                        dt.Columns.Add("pointlocation", typeof(SqlGeography));
+                        dt.Columns.Add("error", typeof(SqlDbType));
 
-                        if (a[1].Length != 6)
+                        int c = 1;
+                        int counterror = 0;
+                        while ((linet = fileINfcd.ReadLine()) != null)
                         {
-                            continue;
+
+                            var a = linet.Split(',');
+
+                            //Console.WriteLine(Int32.Parse(a[0]));
+
+                            DataRow workRow = dt.NewRow();
+                            bool error = false;
+                            DateTime date;
+                            try
+                            {
+                                date = new DateTime(Int32.Parse(a[0].Substring(0, 4)), Int32.Parse(a[0].Substring(4, 2)), Int32.Parse(a[0].Substring(6, 2)), 0, 0, 0);
+                            }
+                            catch
+                            {
+                                date = new DateTime(2000, 01, 01, 0, 0, 0);
+                                error = true;
+                            }
+
+                            DateTime time;
+                            try
+                            {
+                                time = new DateTime(2000, 01, 01, Int32.Parse(a[1].Substring(0, 2)), Int32.Parse(a[1].Substring(2, 2)), Int32.Parse(a[1].Substring(4, 2)));
+                            }
+                            catch
+                            {
+                                time = new DateTime(2000, 01, 01, 0, 0, 0);
+                                error = true;
+                            }
+
+                            string carowner="N/A";
+                            try
+                            {
+                                if (a[2].Length <= 4)
+                                {
+                                    carowner = a[2].ToString();
+                                }
+                                else
+                                {
+                                    carowner = a[2].Substring(0, 4).ToString();
+                                    error = true;
+                                }
+                            }
+                            catch {
+                                error = true;
+                            }
+
+                            Int32 carid = 0;
+                            try
+                            {
+                                carid = Int32.Parse(a[3]);
+                            }
+                            catch
+                            {
+                                error = true;
+                            }
+
+                            string PointString = "POINT(" + a[4] + " " + a[5] + ")";
+                            System.Data.SqlTypes.SqlChars PointSqlChar = new System.Data.SqlTypes.SqlChars(PointString);
+                            int srid = 4326;
+                            SqlGeography point;
+                            double longitude = 0.0;
+                            double latitude = 0.0;
+                            try
+                            {
+                                point = SqlGeography.STGeomFromText(PointSqlChar, srid).MakeValid();
+                                longitude = double.Parse(a[4]);
+                                latitude = double.Parse(a[5]);
+                            }
+                            catch
+                            {
+                                PointString = "POINT(0.0 0.0)";
+                                PointSqlChar = new System.Data.SqlTypes.SqlChars(PointString);
+                                point = SqlGeography.STGeomFromText(PointSqlChar, srid).MakeValid();
+                                error = true;
+                            }
+
+                            double velocity = 0.0;
+                            try
+                            {
+                                velocity = double.Parse(a[6]);
+                            }
+                            catch
+                            {
+                                error = true;
+                            }
+
+                            int drivingdirection = 999;
+                            try
+                            {
+                                if (int.Parse(a[7]) >= 0 & int.Parse(a[7]) <= 359)
+                                {
+                                    drivingdirection = int.Parse(a[7]);
+                                }
+                                else
+                                {
+                                    error = true;
+                                }
+                            }
+                            catch
+                            {
+                                error = true;
+                            }
+
+                            Boolean carstatus = true;
+                            try
+                            {
+                                if (int.Parse(a[8]) == 0)
+                                {
+                                    carstatus = false;
+                                }
+                                else if (int.Parse(a[8]) == 1)
+                                {
+                                    carstatus = true;
+                                }
+                                else
+                                {
+                                    carstatus = false;
+                                    error = true;
+                                }
+                            }
+                            catch
+                            {
+                                error = true;
+                            }
+
+                            Boolean signalstatus = true;
+                            try
+                            {
+                                if (int.Parse(a[9]) == 0)
+                                {
+                                    signalstatus = false;
+                                }
+                                else if (int.Parse(a[9]) == 1)
+                                {
+                                    signalstatus = true;
+                                }
+                                else
+                                {
+                                    signalstatus = false;
+                                    error = true;
+                                }
+                            }
+                            catch
+                            {
+                                error = true;
+                            }
+
+
+
+                            DateTime recordtime = new DateTime(2000, 01, 01, 0, 0, 0);
+                            try
+                            {
+                                recordtime = DateTime.Parse(a[10].TrimEnd(';'), culture, System.Globalization.DateTimeStyles.AssumeLocal);
+                            }
+                            catch
+                            {
+                                error = true;
+                            }
+
+                            if (error == true)
+                            {
+                                counterror++;
+                            }
+                            workRow["date"] = date;
+                            workRow["time"] = time;
+                            workRow["carowner"] = carowner;
+                            workRow["carid"] = carid;
+                            workRow["longitude"] = longitude;
+                            workRow["latitude"] = latitude;
+                            workRow["velocity"] = velocity;
+                            workRow["drivingdirection"] = drivingdirection;
+                            workRow["carstatus"] = carstatus;
+                            workRow["signalstatus"] = signalstatus;
+                            workRow["recordtime"] = recordtime;
+                            workRow["pointlocation"] = point;
+                            workRow["error"] = error;
+
+                            dt.Rows.Add(workRow);
+                            dt.AcceptChanges();
+                            //Console.WriteLine(dt.Rows.Count.ToString());
+
+                            int dtsize = 10000;
+                            if (dt.Rows.Count == dtsize)
+                            {
+                                Console.WriteLine("Send " + (c * dtsize).ToString());
+                                SQLServer.WRITEDataTableToTimoSQLServer("dbo.FCD_staging", dt, "FCD_Shanghai");
+                                c++;
+                                dt.Clear();
+                            }
+
                         }
-                        else
-                        {
-                            DateTime ttt = new DateTime(2000, 01, 01, Int32.Parse(a[1].Substring(0, 2)), Int32.Parse(a[1].Substring(2, 2)), Int32.Parse(a[1].Substring(4, 2)));
-                            workRow["Time"] = ttt;
-                        }
-                        
-                        string three = a[2].ToString();
-                        Int32 four = Int32.Parse(a[3]);
-                        string PointString = "POINT(" + a[4] + " " + a[5] + ")";
-                        System.Data.SqlTypes.SqlChars PointSqlChar = new System.Data.SqlTypes.SqlChars(PointString);
-                        int srid = 4326;
-                        SqlGeography point = SqlGeography.STGeomFromText(PointSqlChar, srid).MakeValid();
-                        float speed = float.Parse(a[6]);
-                        int nbr1 = int.Parse(a[7]);
-                        int nbr2 = int.Parse(a[8]);
-                        int nbr3 = int.Parse(a[9]);
-                        DateTime FullDateTime = DateTime.Parse(a[10].TrimEnd(';'), culture, System.Globalization.DateTimeStyles.AssumeLocal);
-                        
-
-
-                        workRow["Datetime"] = ddd;
-                        
-                        workRow["three"] = three;
-                        workRow["TaxiID"] = four;
-                        workRow["location"] = point;
-                        workRow["speed"] = speed;
-                        workRow["number1"] = nbr1;
-                        workRow["number2"] = nbr2;
-                        workRow["number3"] = nbr3;
-                        workRow["FullDateTime"] = FullDateTime;
-
-                        dt.Rows.Add(workRow);
-                        dt.AcceptChanges();
-                        //Console.WriteLine(dt.Rows.Count.ToString());
-
-
-                        int dtsize = 10000;
-                        if (dt.Rows.Count == dtsize)
-                        {
-                            Console.WriteLine("Send " + (c*dtsize).ToString());
-                            SQLServer.WRITEDataTableToTimoSQLServer("[dbo].[FCD_test]", dt, "FCD_Shanghai");
-                            c++;
-                            dt.Clear();
-                        }
-                        
+                        Console.WriteLine("Send the last " + dt.Rows.Count.ToString() + " then close");
+                        SQLServer.WRITEDataTableToTimoSQLServer("dbo.FCD_staging", dt, "FCD_Shanghai");
+                        fileINfcd.Close();
+                        //disp.dispDT(dt);
+                        Console.WriteLine(counterror.ToString() + " rows with errors in file!");
                     }
-                    Console.WriteLine("Send the last " + dt.Rows.Count.ToString() + " then close");
-                    SQLServer.WRITEDataTableToTimoSQLServer("[dbo].[FCD_test]", dt, "FCD_Shanghai");
-                    fileINfcd.Close();
-
-                    //disp.dispDT(dt);
-                    
-                    
-                    //Console.ReadLine();
+                    Console.ReadLine();
 
                     break;
                 case 8:
@@ -1271,35 +1411,52 @@ namespace YieldAnalyzer
             return isSuccuss;
 
         }
-        
+
         static public bool WRITEDataTableToTimoSQLServer(string tableName, DataTable dataTable, string database)
         {
 
+             SqlConnection SqlConnectionObj = new SqlConnection(Properties.Settings.Default.SQL_TimoFCD);
+                    //Console.WriteLine(SqlConnectionObj.ConnectionString);
+                    SqlConnectionObj.Open();
+            
             bool isSuccuss;
             using (TransactionScope scope = new TransactionScope())
             {
 
                 try
                 {
-                    
-                    SqlConnection SqlConnectionObj = new SqlConnection(Properties.Settings.Default.SQL_TimoFCD  );
-                    //Console.WriteLine(SqlConnectionObj.ConnectionString);
-                                        SqlConnectionObj.Open();
+
                    
+
                     SqlBulkCopy bulkCopy = new SqlBulkCopy(SqlConnectionObj, SqlBulkCopyOptions.TableLock | SqlBulkCopyOptions.FireTriggers | SqlBulkCopyOptions.UseInternalTransaction, null);
+                    bulkCopy.ColumnMappings.Add("date", "date");
+                    bulkCopy.ColumnMappings.Add("time", "time");
+                    bulkCopy.ColumnMappings.Add("carowner", "carowner");
+                    bulkCopy.ColumnMappings.Add("carid", "carid");
+                    bulkCopy.ColumnMappings.Add("longitude", "longitude");
+                    bulkCopy.ColumnMappings.Add("latitude", "latitude");
+                    bulkCopy.ColumnMappings.Add("velocity", "velocity");
+                    bulkCopy.ColumnMappings.Add("drivingdirection", "drivingdirection");
+                    bulkCopy.ColumnMappings.Add("carstatus", "carstatus");
+                    bulkCopy.ColumnMappings.Add("signalstatus", "signalstatus");
+                    bulkCopy.ColumnMappings.Add("recordtime", "recordtime");
+                    bulkCopy.ColumnMappings.Add("pointlocation", "pointlocation");
+                    bulkCopy.ColumnMappings.Add("error", "error");
                     bulkCopy.BulkCopyTimeout = 3600;
                     bulkCopy.DestinationTableName = tableName;
                     bulkCopy.WriteToServer(dataTable);
                     isSuccuss = true;
-                    SqlConnectionObj.Close();
+                    
                 }
                 catch (Exception ex)
                 {
                     isSuccuss = false;
                     Console.WriteLine(ex.ToString());
-                    
+
                 }
+                
                 scope.Complete();
+                SqlConnectionObj.Close();
             }
 
 
