@@ -883,17 +883,32 @@ namespace YieldAnalyzer
                     break;
                 case 7:
                     //CSV to Server
-                    int cc = 1;
-                    for ( cc = 1; cc < 31; cc++)
+                    string startday = "1";
+                    Console.Write("Type startday: ");
+                    startday = Console.ReadLine();
+                    Console.WriteLine(startday);
+                    string dir = "";
+                    Console.Write(@"D:\HarvesterChina3\201004: ");
+                    dir = Console.ReadLine();
+                    for (int cc = int.Parse(startday); cc < 31; cc++)
                     {
                         Console.WriteLine("Sending CSV file to SQL Server");
-                        string bulk_data_filename = @"F:\FCD_Shanghai\201004" + (cc.ToString().PadLeft(2, '0'))  + ".txt";
+                        //string bulk_data_filename = @"F:\FCD_Shanghai\201004" + (cc.ToString().PadLeft(2, '0')) + ".txt";
+                        string bulk_data_filename = dir + (cc.ToString().PadLeft(2, '0')) + ".txt";
                         //string bulk_data_filename = @"D:\HarvesterChina3\20100401.txt";
                         //string bulk_data_filename = @"F:\FCD_Shanghai\taxidata.txt";
                         // Read the file and display it line by line.
-                        Console.WriteLine(bulk_data_filename);
-                        System.IO.StreamReader fileINfcd = new System.IO.StreamReader(bulk_data_filename);
-
+                    
+                        System.IO.StreamReader fileINfcd = null;
+                        try
+                        {
+                            fileINfcd = new System.IO.StreamReader(bulk_data_filename);
+                        }
+                        catch {
+                            Console.WriteLine("no file");
+                            continue;
+                        }
+                        Console.WriteLine("File " + @bulk_data_filename + " read!");
                         DataTable dt = new DataTable();
                         dt.Columns.Add("date", typeof(DateTime));
                         dt.Columns.Add("time", typeof(DateTime));
@@ -909,15 +924,29 @@ namespace YieldAnalyzer
                         dt.Columns.Add("pointlocation", typeof(SqlGeography));
                         dt.Columns.Add("error", typeof(SqlDbType));
 
+
+                        Stopwatch sw = new Stopwatch();
+
+
                         int c = 1;
                         int counterror = 0;
+                        int dtsize = 1000000;
                         while ((linet = fileINfcd.ReadLine()) != null)
                         {
+                            sw.Start();
 
-                            var a = linet.Split(',');
+                            string row = linet;
+                            string test = row.Substring(row.Length - 1);
 
-                            //Console.WriteLine(Int32.Parse(a[0]));
+                            if (test == ";") {
+                                row=row.Replace(";", "");
+                            }
+                            row=row.Replace(";", ",");
+                            var a = row.Split(',');
 
+                          
+                            
+                            //sw.Restart();
                             DataRow workRow = dt.NewRow();
                             bool error = false;
                             DateTime date;
@@ -930,7 +959,11 @@ namespace YieldAnalyzer
                                 date = new DateTime(2000, 01, 01, 0, 0, 0);
                                 error = true;
                             }
-
+                            //Console.WriteLine("date: {0}", sw.Elapsed);
+                            
+                            
+                            
+                            //sw.Restart();
                             DateTime time;
                             try
                             {
@@ -941,8 +974,12 @@ namespace YieldAnalyzer
                                 time = new DateTime(2000, 01, 01, 0, 0, 0);
                                 error = true;
                             }
-
-                            string carowner="N/A";
+                            //Console.WriteLine("time: {0}", sw.Elapsed);
+                            
+                            
+                            
+                            //sw.Restart();
+                            string carowner = "N/A";
                             try
                             {
                                 if (a[2].Length <= 4)
@@ -955,10 +992,15 @@ namespace YieldAnalyzer
                                     error = true;
                                 }
                             }
-                            catch {
+                            catch
+                            {
                                 error = true;
                             }
-
+                            //Console.WriteLine("caro: {0}", sw.Elapsed);
+                            
+                            
+                            
+                            //sw.Restart();
                             Int32 carid = 0;
                             try
                             {
@@ -968,7 +1010,12 @@ namespace YieldAnalyzer
                             {
                                 error = true;
                             }
-
+                            //Console.WriteLine("cari: {0}", sw.Elapsed);
+                            
+                            
+                            
+                            
+                            //sw.Restart();
                             string PointString = "POINT(" + a[4] + " " + a[5] + ")";
                             System.Data.SqlTypes.SqlChars PointSqlChar = new System.Data.SqlTypes.SqlChars(PointString);
                             int srid = 4326;
@@ -988,7 +1035,12 @@ namespace YieldAnalyzer
                                 point = SqlGeography.STGeomFromText(PointSqlChar, srid).MakeValid();
                                 error = true;
                             }
-
+                            //Console.WriteLine("poin: {0}", sw.Elapsed);
+                            
+                            
+                            
+                            
+                            //sw.Restart();
                             double velocity = 0.0;
                             try
                             {
@@ -998,7 +1050,13 @@ namespace YieldAnalyzer
                             {
                                 error = true;
                             }
-
+                            //Console.WriteLine("velo: {0}", sw.Elapsed);
+                            
+                            
+                            
+                            
+                            
+                            //sw.Restart();
                             int drivingdirection = 999;
                             try
                             {
@@ -1015,63 +1073,73 @@ namespace YieldAnalyzer
                             {
                                 error = true;
                             }
-
+                            //Console.WriteLine("driv: {0}", sw.Elapsed);
+                            
+                            
+                            
+                            
+                            //sw.Restart();
                             Boolean carstatus = true;
                             try
                             {
-                                if (int.Parse(a[8]) == 0)
+                                if (a[8] == "0")
                                 {
                                     carstatus = false;
                                 }
-                                else if (int.Parse(a[8]) == 1)
+                                else 
                                 {
                                     carstatus = true;
                                 }
-                                else
-                                {
-                                    carstatus = false;
-                                    error = true;
-                                }
+                                
                             }
                             catch
                             {
                                 error = true;
                             }
-
+                            //Console.WriteLine("cars: {0}", sw.Elapsed);
+                            
+                            
+                            
+                            
+                            //sw.Restart();
                             Boolean signalstatus = true;
                             try
                             {
-                                if (int.Parse(a[9]) == 0)
+                                if (a[9] == "0")
                                 {
                                     signalstatus = false;
-                                }
-                                else if (int.Parse(a[9]) == 1)
-                                {
-                                    signalstatus = true;
                                 }
                                 else
                                 {
-                                    signalstatus = false;
-                                    error = true;
+                                    signalstatus = true;
                                 }
+
                             }
                             catch
                             {
                                 error = true;
                             }
-
-
-
+                            //Console.WriteLine("sign: {0}", sw.Elapsed);
+                            
+                            
+                            
+                            
+                            //sw.Restart();
                             DateTime recordtime = new DateTime(2000, 01, 01, 0, 0, 0);
+                            string reco = a[10];
                             try
                             {
-                                recordtime = DateTime.Parse(a[10].TrimEnd(';'), culture, System.Globalization.DateTimeStyles.AssumeLocal);
+                                recordtime = DateTime.Parse(reco, culture, System.Globalization.DateTimeStyles.AssumeLocal);
                             }
                             catch
                             {
                                 error = true;
                             }
-
+                            //Console.WriteLine("reco: {0}", sw.Elapsed);
+                            
+                            
+                            
+                            //sw.Restart();
                             if (error == true)
                             {
                                 counterror++;
@@ -1091,24 +1159,48 @@ namespace YieldAnalyzer
                             workRow["error"] = error;
 
                             dt.Rows.Add(workRow);
-                            dt.AcceptChanges();
-                            //Console.WriteLine(dt.Rows.Count.ToString());
+                            //dt.AcceptChanges();
+                            //Console.WriteLine("acce: {0}", sw.Elapsed);
+                            //sw.Restart();
 
-                            int dtsize = 10000;
+                            
+                            //if (c > 1)
+                            //{
+                            //    dtsize = c * dtsize;
+                            //}
                             if (dt.Rows.Count == dtsize)
                             {
-                                Console.WriteLine("Send " + (c * dtsize).ToString());
+                                
+                                Console.Write("Time elapsed to fill {0} records in the datatable: {1}",dtsize.ToString(), sw.Elapsed);
+                                sw.Restart();
+                                Console.Write(" sending " + (c * dtsize).ToString() + " ");
                                 SQLServer.WRITEDataTableToTimoSQLServer("dbo.FCD_staging", dt, "FCD_Shanghai");
                                 c++;
                                 dt.Clear();
+                                
+                                //outfile.Close();
+                                // Write result
+                                Console.WriteLine("Time elapsed: {0}",
+                                sw.Elapsed);
+                                sw.Restart();
                             }
+
+
+
+
 
                         }
                         Console.WriteLine("Send the last " + dt.Rows.Count.ToString() + " then close");
                         SQLServer.WRITEDataTableToTimoSQLServer("dbo.FCD_staging", dt, "FCD_Shanghai");
                         fileINfcd.Close();
                         //disp.dispDT(dt);
-                        Console.WriteLine(counterror.ToString() + " rows with errors in file!");
+                        Console.Write(counterror.ToString() + " rows with errors in file! ");
+                        sw.Stop();
+                        //outfile.Close();
+                        // Write result
+                        Console.WriteLine("Time elapsed: {0}",
+                        sw.Elapsed);
+                        sw.Reset();
                     }
                     Console.ReadLine();
 
@@ -1414,50 +1506,51 @@ namespace YieldAnalyzer
 
         static public bool WRITEDataTableToTimoSQLServer(string tableName, DataTable dataTable, string database)
         {
-
-             SqlConnection SqlConnectionObj = new SqlConnection(Properties.Settings.Default.SQL_TimoFCD);
-                    //Console.WriteLine(SqlConnectionObj.ConnectionString);
-                    SqlConnectionObj.Open();
-            
-            bool isSuccuss;
-            using (TransactionScope scope = new TransactionScope())
-            {
-
+        bool isSuccuss;
+            //using (TransactionScope scope = new TransactionScope())
+            //{
+                SqlConnection SqlConnectionObj = new SqlConnection(Properties.Settings.Default.SQL_TimoFCD);
+                SqlConnectionObj.Open();
+                SqlTransaction tran = SqlConnectionObj.BeginTransaction();
                 try
                 {
+                    //using (SqlTransaction tran = SqlConnectionObj.BeginTransaction())
+                    //{
+                        //SqlBulkCopy bulkCopy = new SqlBulkCopy(SqlConnectionObj, SqlBulkCopyOptions.TableLock | SqlBulkCopyOptions.FireTriggers | SqlBulkCopyOptions.UseInternalTransaction, tran);
+                        SqlBulkCopy bulkCopy = new SqlBulkCopy(SqlConnectionObj,   SqlBulkCopyOptions.Default, tran);
 
-                   
-
-                    SqlBulkCopy bulkCopy = new SqlBulkCopy(SqlConnectionObj, SqlBulkCopyOptions.TableLock | SqlBulkCopyOptions.FireTriggers | SqlBulkCopyOptions.UseInternalTransaction, null);
-                    bulkCopy.ColumnMappings.Add("date", "date");
-                    bulkCopy.ColumnMappings.Add("time", "time");
-                    bulkCopy.ColumnMappings.Add("carowner", "carowner");
-                    bulkCopy.ColumnMappings.Add("carid", "carid");
-                    bulkCopy.ColumnMappings.Add("longitude", "longitude");
-                    bulkCopy.ColumnMappings.Add("latitude", "latitude");
-                    bulkCopy.ColumnMappings.Add("velocity", "velocity");
-                    bulkCopy.ColumnMappings.Add("drivingdirection", "drivingdirection");
-                    bulkCopy.ColumnMappings.Add("carstatus", "carstatus");
-                    bulkCopy.ColumnMappings.Add("signalstatus", "signalstatus");
-                    bulkCopy.ColumnMappings.Add("recordtime", "recordtime");
-                    bulkCopy.ColumnMappings.Add("pointlocation", "pointlocation");
-                    bulkCopy.ColumnMappings.Add("error", "error");
-                    bulkCopy.BulkCopyTimeout = 3600;
-                    bulkCopy.DestinationTableName = tableName;
-                    bulkCopy.WriteToServer(dataTable);
-                    isSuccuss = true;
-                    
+                        bulkCopy.BatchSize = dataTable.MinimumCapacity;
+                        bulkCopy.ColumnMappings.Add("date", "date");
+                        bulkCopy.ColumnMappings.Add("time", "time");
+                        bulkCopy.ColumnMappings.Add("carowner", "carowner");
+                        bulkCopy.ColumnMappings.Add("carid", "carid");
+                        bulkCopy.ColumnMappings.Add("longitude", "longitude");
+                        bulkCopy.ColumnMappings.Add("latitude", "latitude");
+                        bulkCopy.ColumnMappings.Add("velocity", "velocity");
+                        bulkCopy.ColumnMappings.Add("drivingdirection", "drivingdirection");
+                        bulkCopy.ColumnMappings.Add("carstatus", "carstatus");
+                        bulkCopy.ColumnMappings.Add("signalstatus", "signalstatus");
+                        bulkCopy.ColumnMappings.Add("recordtime", "recordtime");
+                        bulkCopy.ColumnMappings.Add("pointlocation", "pointlocation");
+                        bulkCopy.ColumnMappings.Add("error", "error");
+                        bulkCopy.BulkCopyTimeout = 3600;
+                        bulkCopy.DestinationTableName = tableName;
+                        bulkCopy.WriteToServer(dataTable);
+                        tran.Commit();
+                        isSuccuss = true;
+                    //}
                 }
                 catch (Exception ex)
                 {
                     isSuccuss = false;
                     Console.WriteLine(ex.ToString());
-
+                    tran.Rollback();
                 }
-                
-                scope.Complete();
-                SqlConnectionObj.Close();
-            }
+                finally { SqlConnectionObj.Close(); }
+            
+                //scope.Complete();
+               
+            //}
 
 
             return isSuccuss;

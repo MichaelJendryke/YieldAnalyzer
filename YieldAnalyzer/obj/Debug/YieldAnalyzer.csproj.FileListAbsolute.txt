@@ -3,7 +3,6 @@ E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\bin\Debug\Yie
 E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\bin\Debug\YieldAnalyzer.pdb
 E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\obj\Debug\YieldAnalyzer.exe
 E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\obj\Debug\YieldAnalyzer.pdb
-E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\obj\Debug\YieldAnalyzer.csprojResolveAssemblyReference.cache
 E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\bin\Debug\Ch15_Triangulation.dll
 E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\bin\Debug\Ch15_Triangulation.pdb
 E:\Dropbox\DATA\research\GhostTowns\WB\YieldAnalyzer\YieldAnalyzer\bin\Debug\Triangle.dll
