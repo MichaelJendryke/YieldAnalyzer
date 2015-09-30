@@ -6,10 +6,10 @@ using System.Transactions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Data;
+using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Globalization;
 
-using System.Data.SqlClient;
 using Microsoft.SqlServer.Types;
 
 using System.Text.RegularExpressions;
@@ -28,14 +28,17 @@ namespace YieldAnalyzer
         static void Main(string[] args)
         {
             Console.WriteLine(DateTime.Now + " 你好 Welcome");
-            int process = 8;
-
+            int process = 0;
+            Console.WriteLine("Which process do you want to run?");
+            process = int.Parse(Console.ReadLine());
+            Console.WriteLine("Great let's run process " + process.ToString());
             string query = "";
             DataTable PolyTable = new DataTable();
             DataTable PointTable = new DataTable();
             DataTable PointTableEnv = new DataTable();
             switch (process)
             {
+
 
 
 
@@ -882,7 +885,7 @@ namespace YieldAnalyzer
 
                     break;
                 case 7:
-                    //CSV to Server
+                    Console.WriteLine("CSV to Server");
                     string startday = "1";
                     Console.Write("Type startday: ");
                     startday = Console.ReadLine();
@@ -1081,7 +1084,7 @@ namespace YieldAnalyzer
 
 
                             //sw.Restart();
-                            Boolean carstatus = true;
+                            Boolean carstatus = false;
                             try
                             {
                                 if (a[8] == "0")
@@ -1104,7 +1107,7 @@ namespace YieldAnalyzer
 
 
                             //sw.Restart();
-                            Boolean signalstatus = true;
+                            Boolean signalstatus = false;
                             try
                             {
                                 if (a[9] == "0")
@@ -1208,45 +1211,52 @@ namespace YieldAnalyzer
 
                     break;
                 case 8:
-//                    with C1 as
-//(
-//  select carid,
-//         recordtime,
-//         carstatus,
-//         ROW_NUMBER() over(PARTITION BY [recordtime] ORDER BY [recordtime] ASC) as rownumber,
-//         lag(carstatus) over(order by recordtime) as lag_carstatus
-//  from [dbo].[FCD_staging]
-//  WHERE
-//    [carid]=10007 AND
-//    [error]=0
-//),
-//C2 as
-//(
-//  select carid,
-//         recordtime,
-//         carstatus,
-//         sum(case when carstatus = lag_carstatus then 0 else 1 end) 
-//            over(order by recordtime rows unbounded preceding) as change 
-//  from C1
-//  Where
-//    C1.rownumber=1
-//)
-//select 
-//       carid,
-//       recordtime,
-//       carstatus,
-//       row_number() over(partition by change order by recordtime) as RowID
-//from C2
+                    //                    with C1 as
+                    //(
+                    //  select carid,
+                    //         recordtime,
+                    //         carstatus,
+                    //         ROW_NUMBER() over(PARTITION BY [recordtime] ORDER BY [recordtime] ASC) as rownumber,
+                    //         lag(carstatus) over(order by recordtime) as lag_carstatus
+                    //  from [dbo].[FCD_staging]
+                    //  WHERE
+                    //    [carid]=10007 AND
+                    //    [error]=0
+                    //),
+                    //C2 as
+                    //(
+                    //  select carid,
+                    //         recordtime,
+                    //         carstatus,
+                    //         sum(case when carstatus = lag_carstatus then 0 else 1 end) 
+                    //            over(order by recordtime rows unbounded preceding) as change 
+                    //  from C1
+                    //  Where
+                    //    C1.rownumber=1
+                    //)
+                    //select 
+                    //       carid,
+                    //       recordtime,
+                    //       carstatus,
+                    //       row_number() over(partition by change order by recordtime) as RowID
+                    //from C2
 
-//exec [dbo].[SelectOneTaxi] 10007
-                    
-                    
-                    
+                    //exec [dbo].[SelectOneTaxi] 10007
+
+
+
                     DataTable dtraw = new DataTable();
                     int ci = 10007;
-                    query = "SELECT	* FROM [dbo].[FCD_staging] WHERE [carid]=" + ci + " ORDER BY recordtime ASC";
-                    dtraw = SQLServer.readDTFCD(query);
+                    //query = "SELECT	* FROM [dbo].[FCD_staging] WHERE [carid]=" + ci + " ORDER BY recordtime ASC";
+                    //dtraw = SQLServer.readDTFCD(query);
                     //disp.dispDT(dtraw);
+
+                    dtraw = SQLServer.readDTFCDbyStoredPr(ci);
+                    disp.dispDT(dtraw);
+                    Console.WriteLine(dtraw.Rows.Count.ToString());
+                    Console.ReadLine();
+
+
                     DataTable dtout = new DataTable();
                     dtout.Columns.Add("starttime", typeof(DateTime));
                     dtout.Columns.Add("endtimetime", typeof(DateTime));
@@ -1274,7 +1284,7 @@ namespace YieldAnalyzer
                     Console.WriteLine(dtraw.Rows[0].Field<DateTime>("recordtime"));
                     Console.WriteLine(dtraw.Rows[1].Field<DateTime>("recordtime"));
                     Console.WriteLine(dtraw.Rows[lastrowindex].Field<DateTime>("recordtime"));
-                    
+
                     for (int index = 0; index < rowcount; index++)
                     {
 
@@ -1301,9 +1311,10 @@ namespace YieldAnalyzer
                             {
                                 Console.WriteLine("next row has the same time");
                             }
-                            else { 
-                            
-                            
+                            else
+                            {
+
+
                             }
 
                             //lastocc = dtraw.Rows[index].Field<bool>("carstatus");
@@ -1570,6 +1581,27 @@ namespace YieldAnalyzer
             myConnection.Close();
 
             return table;
+
+
+        }
+
+        static public DataTable readDTFCDbyStoredPr(int id)
+        {
+            using (SqlConnection sqlcon = new SqlConnection(Properties.Settings.Default.SQL_TimoFCD))
+            {
+                using (SqlCommand cmd = new SqlCommand("SelectOneTaxi", sqlcon))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@taxiid", id);
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        DataTable dt = new DataTable();
+
+                        da.Fill(dt);
+                        return dt;
+                    }
+                }
+            }
 
 
         }
