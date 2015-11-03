@@ -9,7 +9,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Globalization;
-
+using System.IO;
 using Microsoft.SqlServer.Types;
 
 using System.Text.RegularExpressions;
@@ -1327,6 +1327,46 @@ namespace YieldAnalyzer
                     Console.ReadLine();
                     break;
                 case 9:
+                    Console.WriteLine("Binary master_slave.coh to Server");
+                    string fn = @"F:\LINUX\1_Stack_SH\SM\SBAsubsets\20090328_20090408\Outdata\master_slave.coh";
+                    //FileStream fs = new FileStream(fn, FileMode.Open, FileAccess.Read);
+                    //BinaryReader r = new BinaryReader(fs);
+                    //// Read data from Test.data.
+                    //for (int i = 0; i < 11; i++)
+                    //{
+                    //    Console.WriteLine(r.ReadInt32());
+                    //}
+                    //r.Close();
+                    //fs.Close();
+
+                    // 1.
+                    using (BinaryReader b = new BinaryReader(File.Open(fn, FileMode.Open)))
+                    {
+                        // 2.
+                        // Position and length variables.
+                        int pos = 0;
+                        // 2A.
+                        // Use BaseStream.
+                        int length = (int)b.BaseStream.Length;
+                        int over = 0;
+                        while (pos < length)
+                        {
+                            over++;
+                            // 3.
+                            // Read integer.
+                            Single v = b.ReadSingle();
+                            //Console.WriteLine(v.ToString());
+                            if (over>=16000000){
+                            Console.WriteLine(over.ToString());
+                                over = 0;
+                            }
+                            // 4.
+                            // Advance our position variable.
+                            pos += sizeof(Single);
+                        }
+                    }
+
+
 
 
                     break;
